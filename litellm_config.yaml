@@ -42,7 +42,7 @@ general_settings:
   database_url: os.environ/DATABASE_URL
   
   # Redis URL - optional, for caching/rate limiting
-  # redis_url: os.environ/REDIS_URL
+  redis_url: os.environ/REDIS_URL
   
   # Success callbacks (optional)
   # success_callback: []
