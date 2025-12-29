@@ -9,14 +9,26 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '100')
     const apiKey = searchParams.get('api_key') || process.env.TEST_API_KEY || 'sk-o3aQF9PIyMLQYYSTs4h5qg'
     
-    console.log('Fetching logs with params:', { startDate, endDate, limit, apiKey: apiKey.substring(0, 10) + '...' })
+    console.log('[/api/logs] Fetching logs with params:', { 
+      startDate, 
+      endDate, 
+      limit, 
+      apiKey: apiKey.substring(0, 10) + '...',
+      hasMasterKey: !!process.env.LITELLM_MASTER_KEY,
+      baseUrl: process.env.LITELLM_BASE_URL
+    })
     
     let logs
     try {
       logs = await getLogs(startDate, endDate, limit, apiKey)
-      console.log(`Fetched ${logs.length} logs from LiteLLM`)
+      console.log(`[/api/logs] Fetched ${logs.length} logs from LiteLLM`)
+      
+      // Log first entry for debugging
+      if (logs.length > 0) {
+        console.log('[/api/logs] Sample log entry:', JSON.stringify(logs[0], null, 2))
+      }
     } catch (error) {
-      console.error('Error in getLogs:', error)
+      console.error('[/api/logs] Error in getLogs:', error)
       // Return empty array on error
       logs = []
     }

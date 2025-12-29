@@ -13,7 +13,8 @@ export async function POST(request: Request) {
 
     // Call orchestrator via internal network
     const litellmBaseUrl = process.env.LITELLM_BASE_URL || 'http://litellm:4000/v1'
-    const litellmApiKey = process.env.LITELLM_API_KEY || ''
+    // Use test API key for now
+    const litellmApiKey = process.env.TEST_API_KEY || 'sk-o3aQF9PIyMLQYYSTs4h5qg'
 
     // For now, we'll call LiteLLM directly for planning
     // In production, this should call the orchestrator service
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(litellmApiKey && { 'Authorization': `Bearer ${litellmApiKey}` }),
+        'Authorization': `Bearer ${litellmApiKey}`,
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini-2024-07-18',

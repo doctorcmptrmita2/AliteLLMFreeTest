@@ -138,7 +138,7 @@ export async function getSpend(startDate?: string, endDate?: string, apiKey?: st
 
 export async function getLogs(startDate?: string, endDate?: string, limit = 100, apiKey?: string) {
   try {
-    // LiteLLM log endpoint - try different formats
+    // LiteLLM log endpoint - admin API requires master key
     let endpoint = '/logs'
     const params = new URLSearchParams()
     params.append('limit', limit.toString())
@@ -146,18 +146,9 @@ export async function getLogs(startDate?: string, endDate?: string, limit = 100,
     if (startDate) params.append('start_date', startDate)
     if (endDate) params.append('end_date', endDate)
     
-    // LiteLLM log filtering - try different parameter names
-    const filterKey = apiKey || TEST_API_KEY
-    if (filterKey) {
-      // Try multiple parameter names that LiteLLM might use
-      params.append('api_key', filterKey)
-      // Also try user_api_key for filtering
-      // params.append('user_api_key', filterKey) // Commented - might cause issues
-    }
-    
     endpoint = `${endpoint}?${params.toString()}`
     
-    console.log('Fetching logs from:', endpoint)
+    console.log('Fetching logs from LiteLLM:', endpoint)
     const data = await litellmRequest(endpoint)
     
     // Handle different response formats
@@ -170,27 +161,29 @@ export async function getLogs(startDate?: string, endDate?: string, limit = 100,
     } else if (data.logs && Array.isArray(data.logs)) {
       logs = data.logs
     } else {
-      console.warn('Unexpected log response format:', data)
+      console.warn('Unexpected log response format:', Object.keys(data))
       logs = []
     }
     
     console.log(`Received ${logs.length} logs from LiteLLM`)
     
-    // Client-side filtering by API key if needed
+    // Client-side filtering by API key if provided
+    const filterKey = apiKey || TEST_API_KEY
     if (filterKey && logs.length > 0) {
       const filteredLogs = logs.filter((log: any) => {
-        const logKey = log.api_key || log.user_api_key || log.user_api_key_hash || ''
-        const logKeyHash = log.user_api_key_hash || ''
+        const logKey = log.api_key || log.user_api_key || ''
+        const logKeyHash = log.user_api_key_hash || log.api_key_hash || ''
         
-        // Check if log matches the API key
-        return logKey === filterKey || 
-               logKey.includes(filterKey) ||
-               logKeyHash.includes(filterKey.substring(0, 10)) ||
-               // If no key in log, include it (might be from master key)
-               (!logKey && !logKeyHash)
+        // Check if log matches the API key (exact match or hash match)
+        const keyMatch = logKey === filterKey || 
+                        logKey.includes(filterKey) ||
+                        logKeyHash.includes(filterKey.substring(0, 10))
+        
+        // If no key info in log, include it (might be from master key requests)
+        return keyMatch || (!logKey && !logKeyHash)
       })
       
-      console.log(`Filtered to ${filteredLogs.length} logs for API key`)
+      console.log(`Filtered to ${filteredLogs.length} logs for API key: ${filterKey.substring(0, 10)}...`)
       return filteredLogs
     }
     
