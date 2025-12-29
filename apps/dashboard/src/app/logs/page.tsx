@@ -8,13 +8,6 @@ export default function Logs() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchLogs()
-    // Refresh every 10 seconds
-    const interval = setInterval(fetchLogs, 10000)
-    return () => clearInterval(interval)
-  }, [])
-
   const fetchLogs = async () => {
     try {
       setLoading(true)
@@ -41,6 +34,13 @@ export default function Logs() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchLogs()
+    // Refresh every 10 seconds
+    const interval = setInterval(fetchLogs, 10000)
+    return () => clearInterval(interval)
+  }, [])
 
   const getStatusColor = (status: number) => {
     if (status >= 200 && status < 300) return 'text-green-400'
@@ -71,7 +71,7 @@ export default function Logs() {
           ) : logs.length === 0 && !error ? (
             <div className="text-center py-12">
               <div className="text-gray-400 mb-2">Henüz log yok</div>
-              <div className="text-sm text-gray-500">LiteLLM'den loglar çekiliyor...</div>
+              <div className="text-sm text-gray-500">LiteLLM&apos;den loglar çekiliyor...</div>
             </div>
           ) : logs.length > 0 ? (
             <div className="glass rounded-2xl overflow-hidden">
@@ -135,10 +135,9 @@ export default function Logs() {
                 </table>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       </main>
     </div>
   )
 }
-
