@@ -77,9 +77,10 @@ services:
         condition: service_healthy
     networks:
       - roo-code-network
-    restart: unless-stopped
-    # Default command (override with docker-compose run)
-    command: ["--help"]
+    restart: "no"
+    # Orchestrator is a CLI tool, not a long-running service
+    # Use: docker-compose run --rm orchestrator <command>
+    command: ["tail", "-f", "/dev/null"]
 
 volumes:
   postgres_data:
