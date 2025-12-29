@@ -86,7 +86,7 @@ program
 
     // Parse context (assumes format: "PLAN:\n...\n\nCODE:\n...")
     const parts = options.context.split('\n\nCODE:\n');
-    if (parts.length !== 2) {
+    if (parts.length !== 2 || !parts[0] || !parts[1]) {
       console.error('❌ Context format should be: "PLAN:\n...\n\nCODE:\n..."');
       process.exit(1);
     }
