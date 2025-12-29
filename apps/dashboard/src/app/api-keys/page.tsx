@@ -1,29 +1,64 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Sidebar from '@/components/Sidebar'
 
 export default function APIKeys() {
-  const [keys, setKeys] = useState([
-    { id: 1, name: 'Production Key', key: 'sk-...abc123', created: '2025-01-15', requests: 1247, status: 'active' },
-    { id: 2, name: 'Development Key', key: 'sk-...def456', created: '2025-01-10', requests: 89, status: 'active' },
-  ])
+  const [keys, setKeys] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
   const [showNewKey, setShowNewKey] = useState(false)
   const [newKeyName, setNewKeyName] = useState('')
 
-  const generateKey = () => {
-    const newKey = {
-      id: keys.length + 1,
-      name: newKeyName || 'New API Key',
-      key: `sk-${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`,
-      created: new Date().toISOString().split('T')[0],
-      requests: 0,
-      status: 'active',
+  useEffect(() => {
+    fetchKeys()
+  }, [])
+
+  const fetchKeys = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/keys')
+      if (response.ok) {
+        const data = await response.json()
+        setKeys(data)
+      }
+    } catch (error) {
+      console.error('Error fetching keys:', error)
+    } finally {
+      setLoading(false)
     }
-    setKeys([...keys, newKey])
-    setShowNewKey(false)
-    setNewKeyName('')
+  }
+
+  const generateKey = async () => {
+    try {
+      const response = await fetch('/api/keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newKeyName || 'New API Key' }),
+      })
+      if (response.ok) {
+        await fetchKeys()
+        setShowNewKey(false)
+        setNewKeyName('')
+      }
+    } catch (error) {
+      console.error('Error creating key:', error)
+    }
+  }
+
+  const handleDelete = async (keyId: string) => {
+    if (!confirm('Bu API key\'i silmek istediğinize emin misiniz?')) return
+    
+    try {
+      const response = await fetch(`/api/keys?key_id=${keyId}`, {
+        method: 'DELETE',
+      })
+      if (response.ok) {
+        await fetchKeys()
+      }
+    } catch (error) {
+      console.error('Error deleting key:', error)
+    }
   }
 
   return (
@@ -77,42 +112,51 @@ export default function APIKeys() {
             </div>
           )}
 
-          <div className="space-y-4">
-            {keys.map((key) => (
-              <div key={key.id} className="glass rounded-2xl p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-4 mb-2">
-                      <h3 className="text-xl font-bold">{key.name}</h3>
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        key.status === 'active' 
-                          ? 'bg-green-500/20 text-green-400' 
-                          : 'bg-red-500/20 text-red-400'
-                      }`}>
-                        {key.status}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-6 text-sm text-gray-400">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono bg-[#0a0a1a] px-3 py-1 rounded">{key.key}</span>
-                        <button
-                          onClick={() => navigator.clipboard.writeText(key.key)}
-                          className="text-purple-400 hover:text-purple-300"
-                        >
-                          📋
-                        </button>
+          {loading ? (
+            <div className="text-center py-12 text-gray-400">Yükleniyor...</div>
+          ) : keys.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">Henüz API key yok</div>
+          ) : (
+            <div className="space-y-4">
+              {keys.map((key) => (
+                <div key={key.id} className="glass rounded-2xl p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-4 mb-2">
+                        <h3 className="text-xl font-bold">{key.name}</h3>
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          key.status === 'active' 
+                            ? 'bg-green-500/20 text-green-400' 
+                            : 'bg-red-500/20 text-red-400'
+                        }`}>
+                          {key.status}
+                        </span>
                       </div>
-                      <span>Oluşturulma: {key.created}</span>
-                      <span>İstek: {key.requests.toLocaleString()}</span>
+                      <div className="flex items-center gap-6 text-sm text-gray-400">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono bg-[#0a0a1a] px-3 py-1 rounded">{key.key}</span>
+                          <button
+                            onClick={() => navigator.clipboard.writeText(key.key)}
+                            className="text-purple-400 hover:text-purple-300"
+                          >
+                            📋
+                          </button>
+                        </div>
+                        <span>Oluşturulma: {key.created}</span>
+                        <span>İstek: {key.requests.toLocaleString()}</span>
+                      </div>
                     </div>
+                    <button 
+                      onClick={() => handleDelete(key.id)}
+                      className="text-red-400 hover:text-red-300 px-4 py-2"
+                    >
+                      Sil
+                    </button>
                   </div>
-                  <button className="text-red-400 hover:text-red-300 px-4 py-2">
-                    Sil
-                  </button>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>

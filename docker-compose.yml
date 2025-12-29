@@ -111,7 +111,7 @@ services:
     environment:
       NODE_ENV: production
       LITELLM_BASE_URL: http://litellm:4000/v1
-      LITELLM_API_KEY: ${LITELLM_MASTER_KEY:-}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-}
     depends_on:
       litellm:
         condition: service_healthy

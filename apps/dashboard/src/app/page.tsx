@@ -19,15 +19,23 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    // Mock data - gerçek uygulamada API'den çekilecek
-    setStats({
-      totalRequests: 1247,
-      dailyRequests: 23,
-      totalTokens: 456789,
-      totalCost: 12.45,
-      monthlyQuota: 1000000,
-      monthlyUsed: 456789,
-    })
+    // Fetch real stats from LiteLLM
+    const fetchStats = async () => {
+      try {
+        const response = await fetch('/api/stats')
+        if (response.ok) {
+          const data = await response.json()
+          setStats(data)
+        }
+      } catch (error) {
+        console.error('Error fetching stats:', error)
+      }
+    }
+    
+    fetchStats()
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchStats, 30000)
+    return () => clearInterval(interval)
   }, [])
 
   const handleRun = async () => {

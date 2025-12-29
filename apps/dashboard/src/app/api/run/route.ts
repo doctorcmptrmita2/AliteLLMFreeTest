@@ -15,10 +15,43 @@ export async function POST(request: Request) {
     const litellmBaseUrl = process.env.LITELLM_BASE_URL || 'http://litellm:4000/v1'
     const litellmApiKey = process.env.LITELLM_API_KEY || ''
 
-    // For now, return a simple response
-    // In production, call orchestrator service
+    // For now, we'll call LiteLLM directly for planning
+    // In production, this should call the orchestrator service
+    const response = await fetch(`${litellmBaseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(litellmApiKey && { 'Authorization': `Bearer ${litellmApiKey}` }),
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini-2024-07-18',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a planning assistant. Create a detailed plan for the given task.',
+          },
+          {
+            role: 'user',
+            content: `Task: ${task}\n\nCreate a detailed step-by-step plan for this task.`,
+          },
+        ],
+        temperature: 0.7,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      return NextResponse.json(
+        { error: `LiteLLM error: ${errorText}` },
+        { status: response.status }
+      )
+    }
+
+    const data = await response.json()
+    const plan = data.choices?.[0]?.message?.content || 'Plan oluşturulamadı'
+
     return NextResponse.json({
-      result: `Task: ${task}\n\nOrchestrator service integration coming soon...`,
+      result: `PLAN:\n${plan}\n\n[Code ve Review adımları yakında eklenecek]`,
     })
   } catch (error) {
     return NextResponse.json(
@@ -27,4 +60,3 @@ export async function POST(request: Request) {
     )
   }
 }
-
