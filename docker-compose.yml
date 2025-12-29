@@ -86,6 +86,33 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command: ["sleep infinity"]
 
+  # Landing Page
+  landing:
+    build:
+      context: .
+      dockerfile: apps/landing/Dockerfile
+    environment:
+      NODE_ENV: production
+    networks:
+      - roo-code-network
+    restart: unless-stopped
+
+  # Dashboard Panel
+  dashboard:
+    build:
+      context: .
+      dockerfile: apps/dashboard/Dockerfile
+    environment:
+      NODE_ENV: production
+      LITELLM_BASE_URL: http://litellm:4000/v1
+      LITELLM_API_KEY: ${LITELLM_MASTER_KEY:-}
+    depends_on:
+      litellm:
+        condition: service_healthy
+    networks:
+      - roo-code-network
+    restart: unless-stopped
+
 volumes:
   postgres_data:
     driver: local

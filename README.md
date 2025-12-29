@@ -247,3 +247,7 @@ The orchestrator is designed to be modular. Future VS Code extension will:
 
 MIT
 
+---
+
+**Developed by ahmet.aslan** | Roo Code Test Harness - Phase 0
+
