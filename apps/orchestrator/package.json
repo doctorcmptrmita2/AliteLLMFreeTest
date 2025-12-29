@@ -1,0 +1,24 @@
+{
+  "name": "@roo-code/orchestrator",
+  "version": "0.1.0",
+  "description": "Orchestrator CLI for Planner → Coder → Reviewer workflow",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "orchestrator": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "commander": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  }
+}
+
