@@ -85,7 +85,51 @@ model_list:
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
 
-  # Coder models (OpenRouter free tier)
+  # Coder models (OpenRouter) - Fallback chain
+  # Premium Models (High-Performance)
+  - model_name: openrouter/deepseek/deepseek-v3.2
+    litellm_params:
+      model: openrouter/deepseek/deepseek-v3.2
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
+  - model_name: openrouter/anthropic/claude-sonnet-4.5
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-4.5
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
+  - model_name: openrouter/x-ai/grok-4.1-fast
+    litellm_params:
+      model: openrouter/x-ai/grok-4.1-fast
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
+  - model_name: openrouter/z-ai/glm-4.6
+    litellm_params:
+      model: openrouter/z-ai/glm-4.6
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
+  - model_name: openrouter/google/gemini-2.5-flash
+    litellm_params:
+      model: openrouter/google/gemini-2.5-flash
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
+  - model_name: openrouter/amazon/nova-2-lite-v1
+    litellm_params:
+      model: openrouter/amazon/nova-2-lite-v1
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
+  - model_name: openrouter/qwen/qwen3-30b-a3b
+    litellm_params:
+      model: openrouter/qwen/qwen3-30b-a3b
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
+  # Free tier fallback models
   - model_name: openrouter/xiaomi/mimo-v2-flash:free
     litellm_params:
       model: openrouter/xiaomi/mimo-v2-flash:free
@@ -129,12 +173,25 @@ litellm --config litellm_config.yaml --port 4000
 ### Model Fallback Chain
 
 The orchestrator uses the following fallback order for coder models:
-1. `openrouter/xiaomi/mimo-v2-flash:free` (default)
-2. `openrouter/kwaipilot/kat-coder-pro:free` (fallback 1)
-3. `openrouter/mistralai/devstral-2512:free` (fallback 2)
-4. `openrouter/qwen/qwen3-coder:free` (fallback 3)
+
+**Premium Models (High-Performance):**
+1. `openrouter/deepseek/deepseek-v3.2` - High-performance reasoning model (GPT-5 class, 163K context)
+2. `openrouter/anthropic/claude-sonnet-4.5` - Best coding performance, state-of-the-art (1M context)
+3. `openrouter/x-ai/grok-4.1-fast` - Best agentic tool calling, real-world use cases (2M context)
+4. `openrouter/z-ai/glm-4.6` - Superior coding performance, improved agentic capabilities (200K context)
+5. `openrouter/google/gemini-2.5-flash` - Advanced reasoning, coding, mathematics (1M context)
+6. `openrouter/amazon/nova-2-lite-v1` - Fast, cost-effective reasoning, multi-step workflows (1M context)
+7. `openrouter/qwen/qwen3-30b-a3b` - Cost-effective reasoning, multilingual support (40K context)
+
+**Free Tier Fallback Models:**
+8. `openrouter/xiaomi/mimo-v2-flash:free` - Free tier fallback 1
+9. `openrouter/kwaipilot/kat-coder-pro:free` - Free tier fallback 2
+10. `openrouter/mistralai/devstral-2512:free` - Free tier fallback 3
+11. `openrouter/qwen/qwen3-coder:free` - Free tier fallback 4
 
 If a model returns 429 (rate limit) or 5xx error, the orchestrator automatically tries the next model. Each request has 1 retry with exponential backoff.
+
+**Note:** Premium models are placed first for best performance. The system will try premium models first, then fall back to free-tier models if needed. This ensures optimal quality while maintaining cost efficiency.
 
 ## 🐳 Docker Deployment (Easypanel)
 

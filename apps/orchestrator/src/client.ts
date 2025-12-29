@@ -30,6 +30,16 @@ const PLANNER_MODEL = 'openrouter/openai/gpt-4o-mini';
 const REVIEWER_MODEL = 'openrouter/openai/gpt-4o-mini';
 
 const CODER_MODELS = [
+  // Premium models (high-performance)
+  'openrouter/deepseek/deepseek-v3.2', // High-performance reasoning model (GPT-5 class)
+  'openrouter/anthropic/claude-sonnet-4.5', // Best coding performance, state-of-the-art
+  'openrouter/x-ai/grok-4.1-fast', // Best agentic tool calling, 2M context
+  'openrouter/z-ai/glm-4.6', // Superior coding performance, 200K context
+  'openrouter/google/gemini-2.5-flash', // Advanced reasoning, coding, 1M context
+  'openrouter/amazon/nova-2-lite-v1', // Fast, cost-effective reasoning, 1M context
+  'openrouter/qwen/qwen3-30b-a3b', // Cost-effective reasoning, 40K context
+  
+  // Free tier fallback models
   'openrouter/xiaomi/mimo-v2-flash:free',
   'openrouter/kwaipilot/kat-coder-pro:free',
   'openrouter/mistralai/devstral-2512:free',

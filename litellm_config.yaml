@@ -34,6 +34,56 @@ model_list:
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
 
+  # Premium Coder Models (High-performance) - Fallback chain
+  # DeepSeek V3.2 (High-performance reasoning model, GPT-5 class)
+  - model_name: openrouter/deepseek/deepseek-v3.2
+    litellm_params:
+      model: openrouter/deepseek/deepseek-v3.2
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
+  # Claude Sonnet 4.5 (Best coding performance, state-of-the-art)
+  - model_name: openrouter/anthropic/claude-sonnet-4.5
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-4.5
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
+  # Grok 4.1 Fast (Best agentic tool calling, 2M context)
+  - model_name: openrouter/x-ai/grok-4.1-fast
+    litellm_params:
+      model: openrouter/x-ai/grok-4.1-fast
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
+  # GLM 4.6 (Superior coding performance, 200K context)
+  - model_name: openrouter/z-ai/glm-4.6
+    litellm_params:
+      model: openrouter/z-ai/glm-4.6
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
+  # Gemini 2.5 Flash (Advanced reasoning, coding, 1M context)
+  - model_name: openrouter/google/gemini-2.5-flash
+    litellm_params:
+      model: openrouter/google/gemini-2.5-flash
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
+  # Nova 2 Lite (Fast, cost-effective reasoning, 1M context)
+  - model_name: openrouter/amazon/nova-2-lite-v1
+    litellm_params:
+      model: openrouter/amazon/nova-2-lite-v1
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
+  # Qwen3 30B A3B (Cost-effective reasoning, 40K context)
+  - model_name: openrouter/qwen/qwen3-30b-a3b
+    litellm_params:
+      model: openrouter/qwen/qwen3-30b-a3b
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
 general_settings:
   # Master key - MUST be set for Admin UI login
   # Set directly in config (for testing - in production use environment variable)
