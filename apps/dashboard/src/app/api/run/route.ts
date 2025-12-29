@@ -25,7 +25,7 @@ export async function POST(request: Request) {
         'Authorization': `Bearer ${litellmApiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini-2024-07-18',
+        model: 'openrouter/openai/gpt-4o-mini',
         messages: [
           {
             role: 'system',

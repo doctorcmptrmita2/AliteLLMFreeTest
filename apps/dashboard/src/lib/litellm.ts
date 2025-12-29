@@ -1,16 +1,25 @@
 // LiteLLM Admin API client
 
-// Remove /v1 from base URL for admin endpoints
-const LITELLM_BASE_URL = process.env.LITELLM_BASE_URL?.replace('/v1', '') || 'http://litellm:4000'
-const LITELLM_MASTER_KEY = process.env.LITELLM_MASTER_KEY || ''
+// Remove /v1 from base URL for admin endpoints (admin endpoints don't use /v1)
+const getBaseUrl = () => {
+  const url = process.env.LITELLM_BASE_URL || 'http://litellm:4000/v1'
+  // Remove /v1 for admin API calls
+  return url.replace('/v1', '').replace('/v1/', '')
+}
+
+const LITELLM_BASE_URL = getBaseUrl()
+const LITELLM_MASTER_KEY = process.env.LITELLM_MASTER_KEY || 'sk-litellm-master-key-2025-roo-code-orchestrator'
 // Test API Key - şimdilik bu key'e göre filtreleme yapılacak
 const TEST_API_KEY = process.env.TEST_API_KEY || 'sk-o3aQF9PIyMLQYYSTs4h5qg'
 
-console.log('LiteLLM Config:', {
-  baseUrl: LITELLM_BASE_URL,
-  hasMasterKey: !!LITELLM_MASTER_KEY,
-  testApiKey: TEST_API_KEY.substring(0, 10) + '...',
-})
+// Log config only in server-side
+if (typeof window === 'undefined') {
+  console.log('LiteLLM Config:', {
+    baseUrl: LITELLM_BASE_URL,
+    hasMasterKey: !!LITELLM_MASTER_KEY,
+    testApiKey: TEST_API_KEY.substring(0, 10) + '...',
+  })
+}
 
 async function litellmRequest(endpoint: string, options: RequestInit = {}) {
   const url = `${LITELLM_BASE_URL}${endpoint}`
@@ -61,7 +70,11 @@ async function litellmRequest(endpoint: string, options: RequestInit = {}) {
 export async function getKeys() {
   try {
     const data = await litellmRequest('/key/list')
-    return data.data || []
+    // LiteLLM returns { data: [...] } or directly [...]
+    if (Array.isArray(data)) {
+      return data
+    }
+    return data.data || data.keys || []
   } catch (error) {
     console.error('Error fetching keys:', error)
     return []
@@ -70,7 +83,19 @@ export async function getKeys() {
 
 export async function getKeyInfo(keyId: string) {
   try {
-    const data = await litellmRequest(`/key/info?key_id=${keyId}`)
+    // Try different endpoint formats
+    let data
+    try {
+      data = await litellmRequest(`/key/info?key_id=${keyId}`)
+    } catch (e) {
+      // Try alternative format
+      try {
+        data = await litellmRequest(`/key/info?api_key=${keyId}`)
+      } catch (e2) {
+        // Try with token parameter
+        data = await litellmRequest(`/key/info?token=${keyId}`)
+      }
+    }
     return data
   } catch (error) {
     console.error('Error fetching key info:', error)
@@ -104,12 +129,34 @@ export async function getUsage(startDate?: string, endDate?: string, apiKey?: st
     const params = new URLSearchParams()
     if (startDate) params.append('start_date', startDate)
     if (endDate) params.append('end_date', endDate)
-    if (apiKey || TEST_API_KEY) params.append('api_key', apiKey || TEST_API_KEY)
+    // For usage, we can filter by api_key
+    const filterKey = apiKey || TEST_API_KEY
+    if (filterKey) {
+      params.append('api_key', filterKey)
+    }
     
     if (params.toString()) {
       endpoint += `?${params.toString()}`
     }
+    
     const data = await litellmRequest(endpoint)
+    
+    // If filtering by API key and we got all data, filter client-side
+    if (filterKey && data && !data.total_requests) {
+      // Try to get key-specific usage
+      try {
+        const keyInfo = await getKeyInfo(filterKey)
+        if (keyInfo) {
+          return {
+            total_requests: keyInfo.usage?.total_requests || 0,
+            total_tokens: keyInfo.usage?.total_tokens || 0,
+          }
+        }
+      } catch (e) {
+        // Ignore key info errors
+      }
+    }
+    
     return data
   } catch (error) {
     console.error('Error fetching usage:', error)
@@ -123,12 +170,33 @@ export async function getSpend(startDate?: string, endDate?: string, apiKey?: st
     const params = new URLSearchParams()
     if (startDate) params.append('start_date', startDate)
     if (endDate) params.append('end_date', endDate)
-    if (apiKey || TEST_API_KEY) params.append('api_key', apiKey || TEST_API_KEY)
+    // For spend, we can filter by api_key
+    const filterKey = apiKey || TEST_API_KEY
+    if (filterKey) {
+      params.append('api_key', filterKey)
+    }
     
     if (params.toString()) {
       endpoint += `?${params.toString()}`
     }
+    
     const data = await litellmRequest(endpoint)
+    
+    // If filtering by API key and we got all data, filter client-side
+    if (filterKey && data && !data.total_spend) {
+      // Try to get key-specific spend
+      try {
+        const keyInfo = await getKeyInfo(filterKey)
+        if (keyInfo) {
+          return {
+            total_spend: keyInfo.spend || 0,
+          }
+        }
+      } catch (e) {
+        // Ignore key info errors
+      }
+    }
+    
     return data
   } catch (error) {
     console.error('Error fetching spend:', error)
@@ -197,15 +265,30 @@ export async function getLogs(startDate?: string, endDate?: string, limit = 100,
 
 export async function createKey(keyName: string, metadata?: Record<string, any>) {
   try {
+    // LiteLLM key generation format
+    const payload: any = {}
+    
+    // Add metadata if provided
+    if (keyName || metadata) {
+      payload.metadata = {
+        key_name: keyName,
+        ...metadata,
+      }
+    }
+    
     const data = await litellmRequest('/key/generate', {
       method: 'POST',
-      body: JSON.stringify({
-        metadata: {
-          key_name: keyName,
-          ...metadata,
-        },
-      }),
+      body: JSON.stringify(payload),
     })
+    
+    // Handle different response formats
+    if (data.key) {
+      return { token: data.key, key_id: data.key_id || data.key }
+    }
+    if (data.token) {
+      return { token: data.token, key_id: data.key_id || data.token }
+    }
+    
     return data
   } catch (error) {
     console.error('Error creating key:', error)
@@ -215,9 +298,18 @@ export async function createKey(keyName: string, metadata?: Record<string, any>)
 
 export async function deleteKey(keyId: string) {
   try {
-    const data = await litellmRequest(`/key/delete?key_id=${keyId}`, {
-      method: 'DELETE',
-    })
+    // Try different delete formats
+    let data
+    try {
+      data = await litellmRequest(`/key/delete?key_id=${keyId}`, {
+        method: 'DELETE',
+      })
+    } catch (e) {
+      // Try with api_key parameter
+      data = await litellmRequest(`/key/delete?api_key=${keyId}`, {
+        method: 'DELETE',
+      })
+    }
     return data
   } catch (error) {
     console.error('Error deleting key:', error)
