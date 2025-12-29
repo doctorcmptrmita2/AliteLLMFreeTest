@@ -1,11 +1,15 @@
 export default function HowItWorks() {
+  const jsonExample1 = '{"task": "Create a REST API endpoint"}'
+  const jsonExample2 = '{"task": "...", "plan": "..."}'
+  const jsonExample3 = '{"task": "...", "plan": "...", "code": "..."}'
+  
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-16">
         <div className="container mx-auto px-4">
           <h1 className="text-5xl font-bold text-center">Nasıl Kullanılır?</h1>
           <p className="text-center mt-4 text-indigo-100 text-lg">
-            Roo Code'u kullanarak profesyonel kod üretin
+            Roo Code&apos;u kullanarak profesyonel kod üretin
           </p>
         </div>
       </div>
@@ -20,15 +24,15 @@ export default function HowItWorks() {
                   1
                 </div>
                 <div className="flex-grow">
-                  <h2 className="text-3xl font-bold mb-4 text-gray-900">API'ye Bağlan</h2>
+                  <h2 className="text-3xl font-bold mb-4 text-gray-900">API&apos;ye Bağlan</h2>
                   <p className="text-gray-600 text-lg mb-4">
-                    Roo Code API'sine bağlanmak için API anahtarınızı alın. Dashboard üzerinden 
+                    Roo Code API&apos;sine bağlanmak için API anahtarınızı alın. Dashboard üzerinden 
                     kolayca API anahtarı oluşturabilirsiniz.
                   </p>
                   <div className="bg-gray-100 p-4 rounded-lg font-mono text-sm">
                     <code>curl -X POST https://api.roocode.com/v1/plan \</code><br />
-                    <code className="pl-4">-H "Authorization: Bearer YOUR_API_KEY" \</code><br />
-                    <code className="pl-4">-d '{"task": "Create a REST API endpoint"}'</code>
+                    <code className="pl-4">-H &quot;Authorization: Bearer YOUR_API_KEY&quot; \</code><br />
+                    <code className="pl-4">-d &apos;{jsonExample1}&apos;</code>
                   </div>
                 </div>
               </div>
@@ -48,7 +52,7 @@ export default function HowItWorks() {
                   </p>
                   <div className="bg-gray-100 p-4 rounded-lg">
                     <p className="text-sm text-gray-700">
-                      <strong>Örnek Görev:</strong> "Create a user authentication system with JWT tokens"
+                      <strong>Örnek Görev:</strong> &quot;Create a user authentication system with JWT tokens&quot;
                     </p>
                   </div>
                 </div>
@@ -68,8 +72,8 @@ export default function HowItWorks() {
                   </p>
                   <div className="bg-gray-100 p-4 rounded-lg font-mono text-sm">
                     <code>curl -X POST https://api.roocode.com/v1/code \</code><br />
-                    <code className="pl-4">-H "Authorization: Bearer YOUR_API_KEY" \</code><br />
-                    <code className="pl-4">-d '{"task": "...", "plan": "..."}'</code>
+                    <code className="pl-4">-H &quot;Authorization: Bearer YOUR_API_KEY&quot; \</code><br />
+                    <code className="pl-4">-d &apos;{jsonExample2}&apos;</code>
                   </div>
                 </div>
               </div>
@@ -89,8 +93,8 @@ export default function HowItWorks() {
                   </p>
                   <div className="bg-gray-100 p-4 rounded-lg font-mono text-sm">
                     <code>curl -X POST https://api.roocode.com/v1/review \</code><br />
-                    <code className="pl-4">-H "Authorization: Bearer YOUR_API_KEY" \</code><br />
-                    <code className="pl-4">-d '{"task": "...", "plan": "...", "code": "..."}'</code>
+                    <code className="pl-4">-H &quot;Authorization: Bearer YOUR_API_KEY&quot; \</code><br />
+                    <code className="pl-4">-d &apos;{jsonExample3}&apos;</code>
                   </div>
                 </div>
               </div>
@@ -105,8 +109,8 @@ export default function HowItWorks() {
             </p>
             <div className="bg-indigo-700/50 p-4 rounded-lg font-mono text-sm">
               <code>curl -X POST https://api.roocode.com/v1/run \</code><br />
-              <code className="pl-4">-H "Authorization: Bearer YOUR_API_KEY" \</code><br />
-              <code className="pl-4">-d '{"task": "Create a REST API endpoint"}'</code>
+              <code className="pl-4">-H &quot;Authorization: Bearer YOUR_API_KEY&quot; \</code><br />
+              <code className="pl-4">-d &apos;{jsonExample1}&apos;</code>
             </div>
           </div>
         </div>
@@ -114,4 +118,3 @@ export default function HowItWorks() {
     </div>
   )
 }
-
