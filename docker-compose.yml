@@ -1,18 +1,13 @@
-version: '3.8'
-
 services:
   # PostgreSQL (LiteLLM için opsiyonel, logging/analytics için)
   postgres:
     image: postgres:16-alpine
-    container_name: roo-code-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-litellm}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-litellm_pass}
       POSTGRES_DB: ${POSTGRES_DB:-litellm}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-litellm}"]
       interval: 10s
@@ -25,12 +20,9 @@ services:
   # Redis (LiteLLM için caching/rate limiting)
   redis:
     image: redis:7-alpine
-    container_name: roo-code-redis
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -43,10 +35,9 @@ services:
   # LiteLLM Proxy
   litellm:
     image: ghcr.io/berriai/litellm:main-latest
-    container_name: roo-code-litellm
     environment:
       # OpenRouter API Key (Tüm modeller için: Planner, Reviewer, Coder)
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       # Database (opsiyonel, PostgreSQL kullanmak için)
       DATABASE_URL: ${DATABASE_URL:-postgresql://litellm:litellm_pass@postgres:5432/litellm}
       # Redis (opsiyonel, caching için)
@@ -57,8 +48,6 @@ services:
       PORT: 4000
     volumes:
       - ./litellm_config.yaml:/app/litellm_config.yaml:ro
-    ports:
-      - "${LITELLM_PORT:-4000}:4000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,7 +67,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: roo-code-orchestrator
     environment:
       LITELLM_BASE_URL: http://litellm:4000/v1
       LITELLM_API_KEY: ${LITELLM_API_KEY:-}
