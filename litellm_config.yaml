@@ -36,9 +36,8 @@ model_list:
 
 general_settings:
   # Master key - MUST be set for Admin UI login
-  # LiteLLM reads from MASTER_KEY environment variable automatically
-  # But we also set it here explicitly to ensure it works
-  master_key: os.environ/MASTER_KEY
+  # Set directly in config (for testing - in production use environment variable)
+  master_key: "sk-litellm-master-key-2025-roo-code-orchestrator"
   
   # Database URL (PostgreSQL) - optional, for logging/analytics
   database_url: os.environ/DATABASE_URL

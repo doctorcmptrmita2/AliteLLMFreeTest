@@ -35,6 +35,7 @@ services:
   # LiteLLM Proxy
   litellm:
     image: ghcr.io/berriai/litellm:main-latest
+    command: ["--config", "/app/litellm_config.yaml", "--port", "4000", "--detailed_debug"]
     environment:
       # OpenRouter API Key (Tüm modeller için: Planner, Reviewer, Coder)
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
