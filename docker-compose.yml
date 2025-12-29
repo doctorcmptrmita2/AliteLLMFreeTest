@@ -80,7 +80,8 @@ services:
     restart: "no"
     # Orchestrator is a CLI tool, not a long-running service
     # Use: docker-compose run --rm orchestrator <command>
-    command: ["tail", "-f", "/dev/null"]
+    # Keep container running for Easypanel (use sleep which is available in Alpine)
+    command: ["sh", "-c", "sleep infinity"]
 
 volumes:
   postgres_data:
