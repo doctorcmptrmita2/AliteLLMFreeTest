@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  # PostgreSQL (LiteLLM için opsiyonel, logging/analytics için)
+  postgres:
+    image: postgres:16-alpine
+    container_name: roo-code-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-litellm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-litellm_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-litellm}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-litellm}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - roo-code-network
+    restart: unless-stopped
+
+  # Redis (LiteLLM için caching/rate limiting)
+  redis:
+    image: redis:7-alpine
+    container_name: roo-code-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - roo-code-network
+    restart: unless-stopped
+
+  # LiteLLM Proxy
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: roo-code-litellm
+    environment:
+      # OpenRouter API Key (Tüm modeller için: Planner, Reviewer, Coder)
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      # Database (opsiyonel, PostgreSQL kullanmak için)
+      DATABASE_URL: ${DATABASE_URL:-postgresql://litellm:litellm_pass@postgres:5432/litellm}
+      # Redis (opsiyonel, caching için)
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      # Master key (opsiyonel, API auth için)
+      MASTER_KEY: ${LITELLM_MASTER_KEY:-}
+      # Port
+      PORT: 4000
+    volumes:
+      - ./litellm_config.yaml:/app/litellm_config.yaml:ro
+    ports:
+      - "${LITELLM_PORT:-4000}:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - roo-code-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Orchestrator CLI
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: roo-code-orchestrator
+    environment:
+      LITELLM_BASE_URL: http://litellm:4000/v1
+      LITELLM_API_KEY: ${LITELLM_API_KEY:-}
+      REQUEST_TIMEOUT_MS: ${REQUEST_TIMEOUT_MS:-120000}
+    depends_on:
+      litellm:
+        condition: service_healthy
+    networks:
+      - roo-code-network
+    restart: unless-stopped
+    # Default command (override with docker-compose run)
+    command: ["--help"]
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  roo-code-network:
+    driver: bridge
+

@@ -1,0 +1,52 @@
+# LiteLLM Configuration for Roo Code Test Harness
+# This file is used by the LiteLLM proxy service
+
+model_list:
+  # Planner/Reviewer (OpenRouter GPT-4o-mini)
+  - model_name: gpt-4o-mini-2024-07-18
+    litellm_params:
+      model: openrouter/openai/gpt-4o-mini
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
+  # Coder models (OpenRouter free tier) - Fallback chain
+  - model_name: openrouter/xiaomi/mimo-v2-flash:free
+    litellm_params:
+      model: openrouter/xiaomi/mimo-v2-flash:free
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
+  - model_name: openrouter/kwaipilot/kat-coder-pro:free
+    litellm_params:
+      model: openrouter/kwaipilot/kat-coder-pro:free
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
+  - model_name: openrouter/mistralai/devstral-2512:free
+    litellm_params:
+      model: openrouter/mistralai/devstral-2512:free
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
+  - model_name: openrouter/qwen/qwen3-coder:free
+    litellm_params:
+      model: openrouter/qwen/qwen3-coder:free
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
+general_settings:
+  # Master key for API authentication (optional)
+  master_key: os.environ/MASTER_KEY
+  
+  # Database URL (PostgreSQL) - optional, for logging/analytics
+  database_url: os.environ/DATABASE_URL
+  
+  # Redis URL - optional, for caching/rate limiting
+  # redis_url: os.environ/REDIS_URL
+  
+  # Success callbacks (optional)
+  # success_callback: []
+  
+  # Failure callbacks (optional)
+  # failure_callback: []
+

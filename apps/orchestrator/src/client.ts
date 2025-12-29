@@ -25,9 +25,9 @@ interface ClientConfig {
   timeoutMs: number;
 }
 
-// Model configurations
-const PLANNER_MODEL = 'gpt-4o-mini-2024-07-18';
-const REVIEWER_MODEL = 'gpt-4o-mini-2024-07-18';
+// Model configurations (all via OpenRouter)
+const PLANNER_MODEL = 'openrouter/openai/gpt-4o-mini';
+const REVIEWER_MODEL = 'openrouter/openai/gpt-4o-mini';
 
 const CODER_MODELS = [
   'openrouter/xiaomi/mimo-v2-flash:free',

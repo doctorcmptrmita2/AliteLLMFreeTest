@@ -71,11 +71,12 @@ pip install litellm
 2. Create `litellm_config.yaml`:
 ```yaml
 model_list:
-  # Planner/Reviewer (OpenAI)
+  # Planner/Reviewer (OpenRouter GPT-4o-mini)
   - model_name: gpt-4o-mini-2024-07-18
     litellm_params:
-      model: gpt-4o-mini-2024-07-18
-      api_key: os.environ/OPENAI_API_KEY
+      model: openrouter/openai/gpt-4o-mini
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
 
   # Coder models (OpenRouter free tier)
   - model_name: openrouter/xiaomi/mimo-v2-flash:free
@@ -109,7 +110,7 @@ general_settings:
 
 3. Set environment variables:
 ```bash
-export OPENAI_API_KEY=sk-xxx
+# Sadece OpenRouter API Key gerekli (tüm modeller için)
 export OPENROUTER_API_KEY=sk-or-v1-xxx
 ```
 
@@ -130,21 +131,66 @@ If a model returns 429 (rate limit) or 5xx error, the orchestrator automatically
 
 ## 🐳 Docker Deployment (Easypanel)
 
-The project includes a Dockerfile for easy deployment on Easypanel or any Docker-compatible platform.
+The project includes both a standalone Dockerfile and a full-stack `docker-compose.yml` for complete deployment.
 
-### Build
+### Option 1: Docker Compose (Full Stack - Recommended)
+
+Full stack setup with PostgreSQL, Redis, LiteLLM proxy, and Orchestrator:
 
 ```bash
-docker build -t roo-code-orchestrator .
+# 1. Copy environment file
+cp env.example .env
+
+# 2. Edit .env and add your API keys:
+#    - OPENAI_API_KEY (for Planner/Reviewer)
+#    - OPENROUTER_API_KEY (for Coder models)
+
+# 3. Start all services
+docker-compose up -d
+
+# 4. Run orchestrator command
+docker-compose run --rm orchestrator run "Your task here"
+
+# 5. Check logs
+docker-compose logs -f orchestrator
+docker-compose logs -f litellm
+
+# 6. Stop all services
+docker-compose down
 ```
 
-### Run
+**Services included:**
+- ✅ PostgreSQL (port 5432) - LiteLLM logging/analytics
+- ✅ Redis (port 6379) - LiteLLM caching/rate limiting
+- ✅ LiteLLM Proxy (port 4000) - Model gateway
+- ✅ Orchestrator - CLI tool
+
+### Option 2: Standalone Dockerfile
+
+For deploying only the orchestrator (LiteLLM proxy must be external):
 
 ```bash
+# Build
+docker build -t roo-code-orchestrator .
+
+# Run (LiteLLM proxy must be accessible)
 docker run --env-file .env roo-code-orchestrator run "Your task here"
 ```
 
 ### Easypanel Configuration
+
+#### For Docker Compose (Full Stack):
+
+1. Create a new app in Easypanel
+2. Select "Docker Compose" as the source
+3. Point to this repository
+4. Set environment variables from `.env.example`:
+   - `OPENAI_API_KEY`
+   - `OPENROUTER_API_KEY`
+   - `LITELLM_MASTER_KEY` (optional)
+5. Deploy - all services will start automatically
+
+#### For Standalone Dockerfile:
 
 1. Create a new app in Easypanel
 2. Select "Docker" as the source
@@ -166,8 +212,10 @@ docker run --env-file .env roo-code-orchestrator run "Your task here"
 ├── package.json                # Workspace root
 ├── pnpm-workspace.yaml
 ├── tsconfig.base.json
-├── .env.example
-├── Dockerfile
+├── .env.example                # Environment variables template
+├── Dockerfile                  # Standalone orchestrator build
+├── docker-compose.yml          # Full stack (PostgreSQL + Redis + LiteLLM + Orchestrator)
+├── litellm_config.yaml         # LiteLLM proxy configuration
 └── README.md
 ```
 
