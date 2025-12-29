@@ -6,32 +6,39 @@ export default function Logo({ className = "w-8 h-8" }: { className?: string }) 
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Roo (Kanguru) silüeti */}
-      <path
-        d="M50 20 C35 20, 25 30, 25 45 L25 60 C25 70, 30 75, 35 75 L40 75 L40 85 L45 85 L45 75 L55 75 L55 85 L60 85 L60 75 L65 75 C70 75, 75 70, 75 60 L75 45 C75 30, 65 20, 50 20 Z"
-        fill="url(#gradient1)"
-      />
-      {/* Kuyruk */}
-      <path
-        d="M75 50 Q85 45, 90 50 Q85 55, 75 50"
-        fill="url(#gradient1)"
-      />
-      {/* Göz */}
-      <circle cx="40" cy="40" r="4" fill="#1e293b" />
-      {/* Code sembolü */}
-      <path
-        d="M30 55 L35 60 L30 65 M50 55 L45 60 L50 65 M70 55 L65 60 L70 65"
-        stroke="#ffffff"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
+      {/* CodexFlow Logo - Lightning + Code */}
       <defs>
-        <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id="codexGradient" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#6366f1" />
-          <stop offset="100%" stopColor="#8b5cf6" />
+          <stop offset="50%" stopColor="#8b5cf6" />
+          <stop offset="100%" stopColor="#ec4899" />
         </linearGradient>
       </defs>
+      
+      {/* Lightning bolt */}
+      <path
+        d="M50 10 L35 40 L45 40 L30 90 L55 50 L45 50 L60 10 Z"
+        fill="url(#codexGradient)"
+      />
+      
+      {/* Code brackets */}
+      <path
+        d="M20 60 L15 50 L20 40 M80 60 L85 50 L80 40"
+        stroke="url(#codexGradient)"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      
+      {/* Flow lines */}
+      <path
+        d="M25 50 Q50 45, 75 50"
+        stroke="url(#codexGradient)"
+        strokeWidth="2"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.6"
+      />
     </svg>
   )
 }
-

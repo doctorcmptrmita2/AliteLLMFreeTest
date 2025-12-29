@@ -1,91 +1,92 @@
 export default function RooCode() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-16">
+    <div className="min-h-screen bg-[#0a0a1a]">
+      <div className="bg-effects"></div>
+      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white py-24 relative">
         <div className="container mx-auto px-4">
-          <h1 className="text-5xl font-bold text-center">Roo Code Kullanımı</h1>
-          <p className="text-center mt-4 text-indigo-100 text-lg">
-            VS Code Extension ile entegre kullanım
+          <h1 className="text-5xl md:text-6xl font-bold text-center">VS Code Extension</h1>
+          <p className="text-center mt-4 text-purple-100 text-lg">
+            CodexFlow VS Code Extension ile entegre kullanım
           </p>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-16">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-            <h2 className="text-3xl font-bold mb-4 text-gray-900">Roo Code Extension</h2>
-            <p className="text-gray-600 text-lg leading-relaxed mb-6">
-              Roo Code, Visual Studio Code için geliştirilmiş bir extension'dır. 
+      <div className="container mx-auto px-4 py-16 relative z-10">
+        <div className="max-w-4xl mx-auto space-y-8">
+          <div className="glass rounded-2xl p-8">
+            <h2 className="text-3xl font-bold mb-4 gradient-text">CodexFlow Extension</h2>
+            <p className="text-gray-300 text-lg leading-relaxed mb-6">
+              CodexFlow, Visual Studio Code için geliştirilmiş bir extension&apos;dır. 
               Doğrudan editörünüzden AI destekli kod üretimi yapabilirsiniz.
             </p>
             
             <div className="space-y-4">
-              <div className="bg-gray-100 p-4 rounded-lg">
-                <h3 className="font-semibold text-gray-900 mb-2">Kurulum</h3>
-                <ol className="list-decimal list-inside space-y-2 text-gray-700">
-                  <li>VS Code MarketPlace'den "Roo Code" extension'ını yükleyin</li>
+              <div className="bg-[#0a0a1a] p-4 rounded-lg border border-white/10">
+                <h3 className="font-semibold text-white mb-2">Kurulum</h3>
+                <ol className="list-decimal list-inside space-y-2 text-gray-300">
+                  <li>VS Code MarketPlace&apos;den &quot;CodexFlow&quot; extension&apos;ını yükleyin</li>
                   <li>Extension ayarlarından API anahtarınızı girin</li>
                   <li>Hemen kullanmaya başlayın!</li>
                 </ol>
               </div>
 
-              <div className="bg-gray-100 p-4 rounded-lg">
-                <h3 className="font-semibold text-gray-900 mb-2">Kullanım</h3>
-                <ul className="list-disc list-inside space-y-2 text-gray-700">
-                  <li><strong>Plan Oluştur:</strong> Command Palette'den "Roo Code: Plan" komutunu çalıştırın</li>
-                  <li><strong>Kod Üret:</strong> Planınızı kullanarak "Roo Code: Code" ile kod üretin</li>
-                  <li><strong>Gözden Geçir:</strong> "Roo Code: Review" ile kodunuzu analiz edin</li>
-                  <li><strong>Tam Pipeline:</strong> "Roo Code: Run" ile tüm süreci tek seferde çalıştırın</li>
+              <div className="bg-[#0a0a1a] p-4 rounded-lg border border-white/10">
+                <h3 className="font-semibold text-white mb-2">Kullanım</h3>
+                <ul className="list-disc list-inside space-y-2 text-gray-300">
+                  <li><strong className="text-white">Plan Oluştur:</strong> Command Palette&apos;den &quot;CodexFlow: Plan&quot; komutunu çalıştırın</li>
+                  <li><strong className="text-white">Kod Üret:</strong> Planınızı kullanarak &quot;CodexFlow: Code&quot; ile kod üretin</li>
+                  <li><strong className="text-white">Gözden Geçir:</strong> &quot;CodexFlow: Review&quot; ile kodunuzu analiz edin</li>
+                  <li><strong className="text-white">Tam Pipeline:</strong> &quot;CodexFlow: Run&quot; ile tüm süreci tek seferde çalıştırın</li>
                 </ul>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-            <h2 className="text-3xl font-bold mb-4 text-gray-900">Özellikler</h2>
+          <div className="glass rounded-2xl p-8">
+            <h2 className="text-3xl font-bold mb-4 gradient-text">Özellikler</h2>
             <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <h3 className="font-semibold text-gray-900 mb-2">✨ Kolay Kullanım</h3>
-                <p className="text-gray-600">
+                <h3 className="font-semibold text-white mb-2">✨ Kolay Kullanım</h3>
+                <p className="text-gray-300">
                   Command Palette üzerinden kolayca erişilebilir komutlar
                 </p>
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900 mb-2">🚀 Hızlı</h3>
-                <p className="text-gray-600">
+                <h3 className="font-semibold text-white mb-2">🚀 Hızlı</h3>
+                <p className="text-gray-300">
                   Optimize edilmiş API çağrıları ile hızlı sonuçlar
                 </p>
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900 mb-2">🔒 Güvenli</h3>
-                <p className="text-gray-600">
+                <h3 className="font-semibold text-white mb-2">🔒 Güvenli</h3>
+                <p className="text-gray-300">
                   API anahtarlarınız güvenli bir şekilde saklanır
                 </p>
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900 mb-2">📊 İzlenebilir</h3>
-                <p className="text-gray-600">
+                <h3 className="font-semibold text-white mb-2">📊 İzlenebilir</h3>
+                <p className="text-gray-300">
                   Tüm işlemlerinizi dashboard üzerinden takip edin
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow-lg p-8 text-white">
-            <h2 className="text-3xl font-bold mb-4">Hemen Başlayın</h2>
-            <p className="text-lg mb-6 text-indigo-100">
-              Roo Code Extension'ı yükleyin ve profesyonel kod üretimine başlayın.
+          <div className="glass rounded-2xl p-8 border-purple-500/50">
+            <h2 className="text-3xl font-bold mb-4 gradient-text">Hemen Başlayın</h2>
+            <p className="text-lg mb-6 text-gray-300">
+              CodexFlow Extension&apos;ı yükleyin ve profesyonel kod üretimine başlayın.
             </p>
             <div className="flex gap-4">
               <a
                 href="/dashboard"
-                className="bg-white text-indigo-600 px-6 py-3 rounded-lg font-semibold hover:bg-indigo-50 transition"
+                className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition"
               >
-                Dashboard'a Git
+                Dashboard&apos;a Git
               </a>
               <a
                 href="/how-it-works"
-                className="bg-indigo-700/50 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-800/50 transition border border-indigo-400"
+                className="glass text-white px-6 py-3 rounded-lg font-semibold hover:border-purple-500/50 transition"
               >
                 Nasıl Çalışır?
               </a>
@@ -96,4 +97,3 @@ export default function RooCode() {
     </div>
   )
 }
-
