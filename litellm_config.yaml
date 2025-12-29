@@ -35,8 +35,9 @@ model_list:
       api_base: https://openrouter.ai/api/v1
 
 general_settings:
-  # Master key is set via MASTER_KEY environment variable in docker-compose.yml
-  # Do not set master_key here to avoid conflicts with environment variable
+  # Master key for API authentication and Admin UI login
+  # Set via MASTER_KEY environment variable in docker-compose.yml
+  master_key: os.environ/MASTER_KEY
   
   # Database URL (PostgreSQL) - optional, for logging/analytics
   database_url: os.environ/DATABASE_URL
