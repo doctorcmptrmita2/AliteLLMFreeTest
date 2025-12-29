@@ -35,8 +35,9 @@ model_list:
       api_base: https://openrouter.ai/api/v1
 
 general_settings:
-  # Master key for API authentication and Admin UI login
-  # Set via MASTER_KEY environment variable in docker-compose.yml
+  # Master key - MUST be set for Admin UI login
+  # LiteLLM reads from MASTER_KEY environment variable automatically
+  # But we also set it here explicitly to ensure it works
   master_key: os.environ/MASTER_KEY
   
   # Database URL (PostgreSQL) - optional, for logging/analytics

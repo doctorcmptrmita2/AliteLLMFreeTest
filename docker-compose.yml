@@ -42,8 +42,9 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://litellm:litellm_pass@postgres:5432/litellm}
       # Redis (opsiyonel, caching için)
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      # Master key (opsiyonel, API auth için)
-      MASTER_KEY: ${LITELLM_MASTER_KEY:-}
+      # Master key (Admin UI login için ZORUNLU)
+      # LiteLLM otomatik olarak MASTER_KEY environment variable'ını okur
+      MASTER_KEY: ${LITELLM_MASTER_KEY}
       # Port
       PORT: 4000
     volumes:
