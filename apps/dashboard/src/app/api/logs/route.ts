@@ -11,9 +11,15 @@ export async function GET(request: Request) {
     
     console.log('Fetching logs with params:', { startDate, endDate, limit, apiKey: apiKey.substring(0, 10) + '...' })
     
-    const logs = await getLogs(startDate, endDate, limit, apiKey)
-    
-    console.log(`Fetched ${logs.length} logs from LiteLLM`)
+    let logs
+    try {
+      logs = await getLogs(startDate, endDate, limit, apiKey)
+      console.log(`Fetched ${logs.length} logs from LiteLLM`)
+    } catch (error) {
+      console.error('Error in getLogs:', error)
+      // Return empty array on error
+      logs = []
+    }
     
     // Format logs for frontend - handle different LiteLLM log formats
     const formattedLogs = logs.map((log: any) => {
