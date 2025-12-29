@@ -13,17 +13,23 @@ async function litellmRequest(endpoint: string, options: RequestInit = {}) {
     ...options.headers,
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  })
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    })
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => 'Unknown error')
-    throw new Error(`LiteLLM API error (${response.status}): ${errorText}`)
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error')
+      console.error(`LiteLLM API error (${response.status}) for ${endpoint}:`, errorText)
+      throw new Error(`LiteLLM API error (${response.status}): ${errorText}`)
+    }
+
+    return response.json()
+  } catch (error) {
+    console.error(`Error in litellmRequest for ${endpoint}:`, error)
+    throw error
   }
-
-  return response.json()
 }
 
 export async function getKeys() {
@@ -110,25 +116,34 @@ export async function getLogs(startDate?: string, endDate?: string, limit = 100,
     params.append('limit', limit.toString())
     if (startDate) params.append('start_date', startDate)
     if (endDate) params.append('end_date', endDate)
-    if (apiKey || TEST_API_KEY) params.append('api_key', apiKey || TEST_API_KEY)
+    
+    // LiteLLM uses user_api_key_hash or api_key for filtering
+    const filterKey = apiKey || TEST_API_KEY
+    if (filterKey) {
+      // Try both parameters
+      params.append('user_api_key', filterKey)
+    }
     
     const endpoint = `/logs?${params.toString()}`
     const data = await litellmRequest(endpoint)
     
-    // Filter logs by API key if provided
-    let logs = data.data || []
-    if (apiKey || TEST_API_KEY) {
-      const filterKey = apiKey || TEST_API_KEY
-      logs = logs.filter((log: any) => 
-        log.api_key === filterKey || 
-        log.api_key?.includes(filterKey) ||
-        log.user_api_key === filterKey
-      )
+    // Handle different response formats
+    let logs = data.data || data.logs || data || []
+    
+    // If still need to filter client-side (if API filtering didn't work)
+    if (filterKey && logs.length > 0) {
+      logs = logs.filter((log: any) => {
+        const logKey = log.api_key || log.user_api_key || log.user_api_key_hash || ''
+        return logKey.includes(filterKey) || 
+               logKey === filterKey ||
+               log.user_api_key_hash?.includes(filterKey.substring(0, 10))
+      })
     }
     
     return logs
   } catch (error) {
     console.error('Error fetching logs:', error)
+    // Return empty array on error instead of throwing
     return []
   }
 }
