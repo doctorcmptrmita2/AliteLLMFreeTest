@@ -2,6 +2,8 @@
 
 const LITELLM_BASE_URL = process.env.LITELLM_BASE_URL?.replace('/v1', '') || 'http://litellm:4000'
 const LITELLM_MASTER_KEY = process.env.LITELLM_MASTER_KEY || ''
+// Test API Key - şimdilik bu key'e göre filtreleme yapılacak
+const TEST_API_KEY = process.env.TEST_API_KEY || 'sk-o3aQF9PIyMLQYYSTs4h5qg'
 
 async function litellmRequest(endpoint: string, options: RequestInit = {}) {
   const url = `${LITELLM_BASE_URL}${endpoint}`
@@ -44,11 +46,36 @@ export async function getKeyInfo(keyId: string) {
   }
 }
 
-export async function getUsage(startDate?: string, endDate?: string) {
+// Get usage for specific API key
+export async function getKeyUsage(apiKey: string, startDate?: string, endDate?: string) {
+  try {
+    return await getUsage(startDate, endDate, apiKey)
+  } catch (error) {
+    console.error('Error fetching key usage:', error)
+    return null
+  }
+}
+
+// Get spend for specific API key
+export async function getKeySpend(apiKey: string, startDate?: string, endDate?: string) {
+  try {
+    return await getSpend(startDate, endDate, apiKey)
+  } catch (error) {
+    console.error('Error fetching key spend:', error)
+    return null
+  }
+}
+
+export async function getUsage(startDate?: string, endDate?: string, apiKey?: string) {
   try {
     let endpoint = '/usage/global'
-    if (startDate && endDate) {
-      endpoint += `?start_date=${startDate}&end_date=${endDate}`
+    const params = new URLSearchParams()
+    if (startDate) params.append('start_date', startDate)
+    if (endDate) params.append('end_date', endDate)
+    if (apiKey || TEST_API_KEY) params.append('api_key', apiKey || TEST_API_KEY)
+    
+    if (params.toString()) {
+      endpoint += `?${params.toString()}`
     }
     const data = await litellmRequest(endpoint)
     return data
@@ -58,11 +85,16 @@ export async function getUsage(startDate?: string, endDate?: string) {
   }
 }
 
-export async function getSpend(startDate?: string, endDate?: string) {
+export async function getSpend(startDate?: string, endDate?: string, apiKey?: string) {
   try {
     let endpoint = '/usage/spend'
-    if (startDate && endDate) {
-      endpoint += `?start_date=${startDate}&end_date=${endDate}`
+    const params = new URLSearchParams()
+    if (startDate) params.append('start_date', startDate)
+    if (endDate) params.append('end_date', endDate)
+    if (apiKey || TEST_API_KEY) params.append('api_key', apiKey || TEST_API_KEY)
+    
+    if (params.toString()) {
+      endpoint += `?${params.toString()}`
     }
     const data = await litellmRequest(endpoint)
     return data
@@ -72,14 +104,29 @@ export async function getSpend(startDate?: string, endDate?: string) {
   }
 }
 
-export async function getLogs(startDate?: string, endDate?: string, limit = 100) {
+export async function getLogs(startDate?: string, endDate?: string, limit = 100, apiKey?: string) {
   try {
-    let endpoint = `/logs?limit=${limit}`
-    if (startDate && endDate) {
-      endpoint += `&start_date=${startDate}&end_date=${endDate}`
-    }
+    const params = new URLSearchParams()
+    params.append('limit', limit.toString())
+    if (startDate) params.append('start_date', startDate)
+    if (endDate) params.append('end_date', endDate)
+    if (apiKey || TEST_API_KEY) params.append('api_key', apiKey || TEST_API_KEY)
+    
+    const endpoint = `/logs?${params.toString()}`
     const data = await litellmRequest(endpoint)
-    return data.data || []
+    
+    // Filter logs by API key if provided
+    let logs = data.data || []
+    if (apiKey || TEST_API_KEY) {
+      const filterKey = apiKey || TEST_API_KEY
+      logs = logs.filter((log: any) => 
+        log.api_key === filterKey || 
+        log.api_key?.includes(filterKey) ||
+        log.user_api_key === filterKey
+      )
+    }
+    
+    return logs
   } catch (error) {
     console.error('Error fetching logs:', error)
     return []

@@ -7,8 +7,9 @@ export async function GET(request: Request) {
     const startDate = searchParams.get('start_date') || undefined
     const endDate = searchParams.get('end_date') || undefined
     const limit = parseInt(searchParams.get('limit') || '100')
+    const apiKey = searchParams.get('api_key') || process.env.TEST_API_KEY || 'sk-o3aQF9PIyMLQYYSTs4h5qg'
     
-    const logs = await getLogs(startDate, endDate, limit)
+    const logs = await getLogs(startDate, endDate, limit, apiKey)
     
     // Format logs for frontend
     const formattedLogs = logs.map((log: any) => ({

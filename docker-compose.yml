@@ -112,6 +112,7 @@ services:
       NODE_ENV: production
       LITELLM_BASE_URL: http://litellm:4000/v1
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-}
+      TEST_API_KEY: ${TEST_API_KEY:-sk-o3aQF9PIyMLQYYSTs4h5qg}
     depends_on:
       litellm:
         condition: service_healthy

@@ -19,7 +19,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    // Fetch real stats from LiteLLM
+    // Fetch real stats from LiteLLM (filtered by test API key)
     const fetchStats = async () => {
       try {
         const response = await fetch('/api/stats')
@@ -80,6 +80,10 @@ export default function Dashboard() {
           <div className="mb-8">
             <h1 className="text-4xl font-bold mb-2 gradient-text">Dashboard</h1>
             <p className="text-gray-400">API kullanım istatistikleri ve yönetim</p>
+            <div className="mt-2 glass rounded-lg px-4 py-2 inline-block">
+              <span className="text-sm text-gray-400">Test API Key: </span>
+              <span className="text-sm font-mono text-purple-400">sk-o3aQF9PIyMLQYYSTs4h5qg</span>
+            </div>
           </div>
 
           {/* Stats Grid */}
