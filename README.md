@@ -1,5 +1,12 @@
 # Roo Code Test Harness
-
+Easypanel'de kullanım
+Aynı docker-compose.yml içinde:
+Landing: Port 3000
+Dashboard: Port 3001
+LiteLLM: Port 4000
+Easypanel'de domain yönlendirmesi:
+Ana domain → Landing page
+/dashboard → Dashboard panel
 Planner → Coder → Reviewer workflow test harness using LiteLLM + OpenRouter.
 
 ## 🎯 Overview
