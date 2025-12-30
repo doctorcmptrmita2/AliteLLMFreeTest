@@ -453,8 +453,7 @@ export async function getLogs(startDate?: string, endDate?: string, limit = 100,
     
     console.log(`Received ${logs.length} logs from LiteLLM`)
     
-    // Client-side filtering by API key if provided
-    const filterKey = apiKey || TEST_API_KEY
+    // Client-side filtering by API key if provided (filterKey already defined above)
     if (filterKey && logs.length > 0) {
       const filteredLogs = logs.filter((log: any) => {
         const logKey = log.api_key || log.user_api_key || ''
