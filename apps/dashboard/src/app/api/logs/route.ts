@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { getLogs } from '@/lib/litellm'
 import { getCurrentUser, getUserApiKeys } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
   try {
     const user = await getCurrentUser()

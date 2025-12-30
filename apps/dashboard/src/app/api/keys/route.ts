@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { getKeys, createKey, deleteKey } from '@/lib/litellm'
 import { getCurrentUser, getUserApiKeys, addApiKeyToUser } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const user = await getCurrentUser()
