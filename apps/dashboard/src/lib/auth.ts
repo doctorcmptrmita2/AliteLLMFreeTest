@@ -1,7 +1,8 @@
-// Simple JWT-based authentication system
+// Production-ready JWT-based authentication system with PostgreSQL
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 import bcrypt from 'bcryptjs'
+import { prisma } from './db-client'
 
 const SECRET = new TextEncoder().encode(
   process.env.AUTH_SECRET || 'roo-code-secret-key-change-in-production-2025'
@@ -15,10 +16,6 @@ export interface User {
   createdAt: Date
   apiKeys: string[] // LiteLLM API key IDs associated with this user
 }
-
-// Simple in-memory user store (replace with database in production)
-const users: Map<string, User> = new Map()
-const userPasswords: Map<string, string> = new Map() // email -> password hash
 
 export async function signToken(user: User): Promise<string> {
   const token = await new SignJWT({ userId: user.id, email: user.email })
@@ -51,16 +48,49 @@ export async function getCurrentUser(): Promise<User | null> {
 }
 
 export async function getUserByEmail(email: string): Promise<User | null> {
-  for (const user of users.values()) {
-    if (user.email === email) {
-      return user
+  try {
+    const dbUser = await prisma.user.findUnique({
+      where: { email },
+      include: { apiKeys: true },
+    })
+    
+    if (!dbUser) return null
+    
+    return {
+      id: dbUser.id,
+      email: dbUser.email,
+      name: dbUser.name,
+      passwordHash: dbUser.passwordHash,
+      createdAt: dbUser.createdAt,
+      apiKeys: dbUser.apiKeys.map((key) => key.keyId),
     }
+  } catch (error) {
+    console.error('Error getting user by email:', error)
+    return null
   }
-  return null
 }
 
 export async function getUserById(id: string): Promise<User | null> {
-  return users.get(id) || null
+  try {
+    const dbUser = await prisma.user.findUnique({
+      where: { id },
+      include: { apiKeys: true },
+    })
+    
+    if (!dbUser) return null
+    
+    return {
+      id: dbUser.id,
+      email: dbUser.email,
+      name: dbUser.name,
+      passwordHash: dbUser.passwordHash,
+      createdAt: dbUser.createdAt,
+      apiKeys: dbUser.apiKeys.map((key) => key.keyId),
+    }
+  } catch (error) {
+    console.error('Error getting user by id:', error)
+    return null
+  }
 }
 
 export async function createUser(email: string, name: string, password: string): Promise<User> {
@@ -73,58 +103,86 @@ export async function createUser(email: string, name: string, password: string):
   // Hash password
   const passwordHash = await bcrypt.hash(password, 10)
   
-  const userId = Math.random().toString(36).substring(2, 15)
-  const user: User = {
-    id: userId,
-    email,
-    name,
-    passwordHash,
-    createdAt: new Date(),
-    apiKeys: [],
+  // Create user in database
+  const dbUser = await prisma.user.create({
+    data: {
+      email,
+      name,
+      passwordHash,
+    },
+    include: { apiKeys: true },
+  })
+  
+  return {
+    id: dbUser.id,
+    email: dbUser.email,
+    name: dbUser.name,
+    passwordHash: dbUser.passwordHash,
+    createdAt: dbUser.createdAt,
+    apiKeys: dbUser.apiKeys.map((key) => key.keyId),
   }
-  
-  users.set(userId, user)
-  userPasswords.set(email, passwordHash)
-  
-  return user
 }
 
 export async function verifyPassword(email: string, password: string): Promise<User | null> {
   const user = await getUserByEmail(email)
   if (!user) return null
   
-  const storedHash = userPasswords.get(email) || user.passwordHash
-  const isValid = await bcrypt.compare(password, storedHash)
+  const isValid = await bcrypt.compare(password, user.passwordHash)
   
   return isValid ? user : null
 }
 
-export async function addApiKeyToUser(userId: string, apiKeyId: string): Promise<void> {
-  const user = await getUserById(userId)
-  if (user && !user.apiKeys.includes(apiKeyId)) {
-    user.apiKeys.push(apiKeyId)
-    users.set(userId, user)
+export async function addApiKeyToUser(userId: string, apiKeyId: string, keyName?: string): Promise<void> {
+  try {
+    // Check if key already exists for this user
+    const existing = await prisma.userApiKey.findUnique({
+      where: {
+        userId_keyId: {
+          userId,
+          keyId: apiKeyId,
+        },
+      },
+    })
+    
+    if (!existing) {
+      await prisma.userApiKey.create({
+        data: {
+          userId,
+          keyId: apiKeyId,
+          keyName: keyName || 'API Key',
+        },
+      })
+    }
+  } catch (error) {
+    console.error('Error adding API key to user:', error)
+    throw error
   }
 }
 
 export async function getUserApiKeys(userId: string): Promise<string[]> {
-  const user = await getUserById(userId)
-  return user?.apiKeys || []
-}
-
-// Initialize test user on module load (only if enabled)
-if (typeof window === 'undefined') {
-  // Server-side only
-  const shouldSeed = process.env.SEED_TEST_USER === 'true' || process.env.NODE_ENV === 'development'
-  if (shouldSeed) {
-    // Import and run seed asynchronously to avoid blocking
-    import('./seed').then(({ seedTestUser }) => {
-      seedTestUser().catch((err) => {
-        console.error('[Auth] Seed error:', err)
-      })
-    }).catch(() => {
-      // Ignore import errors
+  try {
+    const apiKeys = await prisma.userApiKey.findMany({
+      where: { userId },
+      select: { keyId: true },
     })
+    
+    return apiKeys.map((key) => key.keyId)
+  } catch (error) {
+    console.error('Error getting user API keys:', error)
+    return []
   }
 }
 
+export async function removeApiKeyFromUser(userId: string, apiKeyId: string): Promise<void> {
+  try {
+    await prisma.userApiKey.deleteMany({
+      where: {
+        userId,
+        keyId: apiKeyId,
+      },
+    })
+  } catch (error) {
+    console.error('Error removing API key from user:', error)
+    throw error
+  }
+}

@@ -49,7 +49,20 @@ Oluşturulan API key'i dashboard'dan görebilir ve kullanabilirsiniz:
 
 ## Notlar
 
-- Test kullanıcısı in-memory store'da tutuluyor (restart'ta sıfırlanır)
-- Production için PostgreSQL'e geçmeniz önerilir
+- ✅ **Artık PostgreSQL kullanılıyor!** Test kullanıcısı database'de kalıcı olarak saklanıyor
+- ✅ Restart'ta veri kaybı yok
+- ✅ Production-ready database yapısı
 - API key LiteLLM'de mevcut olmalı
+
+## Database Migration
+
+İlk kurulumda database migration çalıştırın:
+
+```bash
+cd apps/dashboard
+pnpm db:migrate
+pnpm db:seed
+```
+
+Detaylı bilgi için `MIGRATION_GUIDE.md` dosyasına bakın.
 

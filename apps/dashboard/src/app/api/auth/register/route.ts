@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createUser, signToken } from '@/lib/auth'
+import { createUser, signToken, addApiKeyToUser } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,8 +22,7 @@ export async function POST(request: Request) {
     const TEST_API_KEY = 'sk-nWqZQbczxgZPWPrQjdpWTA'
     
     if (email === TEST_EMAIL) {
-      const { addApiKeyToUser } = await import('@/lib/auth')
-      await addApiKeyToUser(user.id, TEST_API_KEY)
+      await addApiKeyToUser(user.id, TEST_API_KEY, 'Default API Key')
       console.log(`[Register] Auto-associated API key for ${TEST_EMAIL}`)
     }
     

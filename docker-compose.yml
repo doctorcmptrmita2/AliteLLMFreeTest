@@ -110,10 +110,15 @@ services:
       dockerfile: apps/dashboard/Dockerfile
     environment:
       NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:-postgresql://litellm:litellm_pass@postgres:5432/litellm}
+      AUTH_SECRET: ${AUTH_SECRET:-roo-code-secret-key-change-in-production-2025}
       LITELLM_BASE_URL: ${LITELLM_BASE_URL:-http://litellm:4000/v1}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-litellm-master-key-2025-roo-code-orchestrator}
-      TEST_API_KEY: ${TEST_API_KEY:-sk-o3aQF9PIyMLQYYSTs4h5qg}
+      TEST_API_KEY: ${TEST_API_KEY:-sk-nWqZQbczxgZPWPrQjdpWTA}
+      SEED_TEST_USER: ${SEED_TEST_USER:-false}
     depends_on:
+      postgres:
+        condition: service_healthy
       litellm:
         condition: service_healthy
     networks:

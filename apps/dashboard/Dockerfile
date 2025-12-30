@@ -18,8 +18,11 @@ COPY pnpm-lock.yaml* ./
 # Install dependencies
 RUN pnpm install --frozen-lockfile || pnpm install
 
-# Build dashboard
+# Generate Prisma Client
 WORKDIR /app/apps/dashboard
+RUN pnpm db:generate
+
+# Build dashboard
 RUN pnpm build
 
 # Production stage
@@ -33,6 +36,8 @@ WORKDIR /app
 COPY --from=base /app/apps/dashboard/.next/standalone ./
 COPY --from=base /app/apps/dashboard/.next/static ./apps/dashboard/.next/static
 COPY --from=base /app/apps/dashboard/public ./apps/dashboard/public
+COPY --from=base /app/apps/dashboard/node_modules/.prisma ./apps/dashboard/node_modules/.prisma
+COPY --from=base /app/apps/dashboard/node_modules/@prisma ./apps/dashboard/node_modules/@prisma
 
 EXPOSE 3001
 
@@ -40,5 +45,3 @@ ENV PORT=3001
 ENV HOSTNAME="0.0.0.0"
 
 CMD ["node", "apps/dashboard/server.js"]
-
-

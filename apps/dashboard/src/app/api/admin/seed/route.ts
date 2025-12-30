@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { seedTestUser } from '@/lib/seed'
+import { prisma } from '@/lib/db-client'
+import bcrypt from 'bcryptjs'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,13 +19,49 @@ export async function POST(request: Request) {
       )
     }
     
-    const user = await seedTestUser()
+    const testEmail = 'doctor.cmptr.mita2@gmail.com'
+    const testPassword = 'test123456'
+    const testApiKey = 'sk-nWqZQbczxgZPWPrQjdpWTA'
+    
+    // Check if user exists
+    let user = await prisma.user.findUnique({
+      where: { email: testEmail },
+      include: { apiKeys: true },
+    })
     
     if (!user) {
-      return NextResponse.json(
-        { error: 'Failed to seed user' },
-        { status: 500 }
-      )
+      const passwordHash = await bcrypt.hash(testPassword, 10)
+      user = await prisma.user.create({
+        data: {
+          email: testEmail,
+          name: 'Test User',
+          passwordHash,
+          apiKeys: {
+            create: {
+              keyId: testApiKey,
+              keyName: 'Default API Key',
+            },
+          },
+        },
+        include: { apiKeys: true },
+      })
+    } else {
+      // Check if API key exists
+      const hasApiKey = user.apiKeys.some((key) => key.keyId === testApiKey)
+      if (!hasApiKey) {
+        await prisma.userApiKey.create({
+          data: {
+            userId: user.id,
+            keyId: testApiKey,
+            keyName: 'Default API Key',
+          },
+        })
+        // Reload user
+        user = await prisma.user.findUnique({
+          where: { email: testEmail },
+          include: { apiKeys: true },
+        })!
+      }
     }
     
     return NextResponse.json({
@@ -34,7 +71,7 @@ export async function POST(request: Request) {
         id: user.id,
         email: user.email,
         name: user.name,
-        apiKeys: user.apiKeys,
+        apiKeys: user.apiKeys.map((k) => k.keyId),
       },
     })
   } catch (error) {

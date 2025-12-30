@@ -141,6 +141,14 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401 }
+      )
+    }
+    
     const { searchParams } = new URL(request.url)
     const keyId = searchParams.get('key_id')
     
@@ -151,7 +159,21 @@ export async function DELETE(request: Request) {
       )
     }
     
+    // Verify the key belongs to the user
+    const userApiKeyIds = await getUserApiKeys(user.id)
+    if (!userApiKeyIds.includes(keyId)) {
+      return NextResponse.json(
+        { error: 'API key not found or access denied' },
+        { status: 403 }
+      )
+    }
+    
+    // Delete from LiteLLM
     await deleteKey(keyId)
+    
+    // Remove from database
+    const { removeApiKeyFromUser } = await import('@/lib/auth')
+    await removeApiKeyFromUser(user.id, keyId)
     
     return NextResponse.json({ success: true })
   } catch (error) {
