@@ -125,7 +125,8 @@ export async function getKeySpend(apiKey: string, startDate?: string, endDate?: 
 
 export async function getUsage(startDate?: string, endDate?: string, apiKey?: string) {
   try {
-    let endpoint = '/usage/global'
+    // LiteLLM Admin API uses /global/activity/usage or /usage/global
+    let endpoint = '/global/activity/usage'
     const params = new URLSearchParams()
     if (startDate) params.append('start_date', startDate)
     if (endDate) params.append('end_date', endDate)
@@ -139,7 +140,15 @@ export async function getUsage(startDate?: string, endDate?: string, apiKey?: st
       endpoint += `?${params.toString()}`
     }
     
-    const data = await litellmRequest(endpoint)
+    let data
+    try {
+      data = await litellmRequest(endpoint)
+    } catch (e) {
+      // Fallback to /usage/global endpoint
+      console.log('Trying fallback /usage/global endpoint')
+      endpoint = `/usage/global?${params.toString()}`
+      data = await litellmRequest(endpoint)
+    }
     
     // If filtering by API key and we got all data, filter client-side
     if (filterKey && data && !data.total_requests) {
@@ -166,7 +175,8 @@ export async function getUsage(startDate?: string, endDate?: string, apiKey?: st
 
 export async function getSpend(startDate?: string, endDate?: string, apiKey?: string) {
   try {
-    let endpoint = '/usage/spend'
+    // LiteLLM Admin API uses /global/activity/spend or /usage/spend
+    let endpoint = '/global/activity/spend'
     const params = new URLSearchParams()
     if (startDate) params.append('start_date', startDate)
     if (endDate) params.append('end_date', endDate)
@@ -180,7 +190,15 @@ export async function getSpend(startDate?: string, endDate?: string, apiKey?: st
       endpoint += `?${params.toString()}`
     }
     
-    const data = await litellmRequest(endpoint)
+    let data
+    try {
+      data = await litellmRequest(endpoint)
+    } catch (e) {
+      // Fallback to /usage/spend endpoint
+      console.log('Trying fallback /usage/spend endpoint')
+      endpoint = `/usage/spend?${params.toString()}`
+      data = await litellmRequest(endpoint)
+    }
     
     // If filtering by API key and we got all data, filter client-side
     if (filterKey && data && !data.total_spend) {
@@ -206,8 +224,9 @@ export async function getSpend(startDate?: string, endDate?: string, apiKey?: st
 
 export async function getLogs(startDate?: string, endDate?: string, limit = 100, apiKey?: string) {
   try {
-    // LiteLLM log endpoint - admin API requires master key
-    let endpoint = '/logs'
+    // LiteLLM log endpoint - try different endpoint formats
+    // LiteLLM Admin API uses /global/activity/logs or /logs
+    let endpoint = '/global/activity/logs'
     const params = new URLSearchParams()
     params.append('limit', limit.toString())
     
@@ -217,7 +236,15 @@ export async function getLogs(startDate?: string, endDate?: string, limit = 100,
     endpoint = `${endpoint}?${params.toString()}`
     
     console.log('Fetching logs from LiteLLM:', endpoint)
-    const data = await litellmRequest(endpoint)
+    let data
+    try {
+      data = await litellmRequest(endpoint)
+    } catch (e) {
+      // Fallback to /logs endpoint
+      console.log('Trying fallback /logs endpoint')
+      endpoint = `/logs?${params.toString()}`
+      data = await litellmRequest(endpoint)
+    }
     
     // Handle different response formats
     // LiteLLM might return: { data: [...] } or directly [...]
