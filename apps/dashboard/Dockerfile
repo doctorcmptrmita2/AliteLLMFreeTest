@@ -40,17 +40,8 @@ COPY --from=base /app/apps/dashboard/.next/standalone ./
 COPY --from=base /app/apps/dashboard/.next/static ./apps/dashboard/.next/static
 COPY --from=base /app/apps/dashboard/public ./apps/dashboard/public
 
-# Copy Prisma client and engines (required for runtime)
-# Prisma is marked as external in next.config.js, so we need to copy it manually
-# In pnpm workspace, Prisma files are in root node_modules
-# Standalone build already includes node_modules, but Prisma needs special handling
-RUN mkdir -p ./node_modules/.prisma ./node_modules/@prisma
-
-# Copy Prisma files from base image
-# pnpm stores packages in .pnpm, but generates symlinks in node_modules
-# We need to copy the actual Prisma client and engines
-COPY --from=base /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=base /app/node_modules/@prisma/client ./node_modules/@prisma/client
+# Prisma is automatically included in standalone build by Next.js
+# No need to manually copy Prisma files
 
 EXPOSE 3001
 
