@@ -1,7 +1,7 @@
 FROM node:20-alpine AS base
 
 # Install pnpm and OpenSSL (required for Prisma)
-RUN apk add --no-cache openssl1.1-compat libc6-compat && \
+RUN apk add --no-cache openssl openssl-dev && \
     corepack enable && corepack prepare pnpm@8.15.0 --activate
 
 WORKDIR /app
@@ -30,7 +30,7 @@ RUN pnpm build
 FROM node:20-alpine AS production
 
 # Install OpenSSL (required for Prisma)
-RUN apk add --no-cache openssl1.1-compat libc6-compat && \
+RUN apk add --no-cache openssl openssl-dev && \
     corepack enable && corepack prepare pnpm@8.15.0 --activate
 
 WORKDIR /app
