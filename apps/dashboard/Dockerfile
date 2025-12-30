@@ -1,7 +1,8 @@
 FROM node:20-alpine AS base
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+# Install pnpm and OpenSSL (required for Prisma)
+RUN apk add --no-cache openssl1.1-compat libc6-compat && \
+    corepack enable && corepack prepare pnpm@8.15.0 --activate
 
 WORKDIR /app
 
@@ -28,7 +29,9 @@ RUN pnpm build
 # Production stage
 FROM node:20-alpine AS production
 
-RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+# Install OpenSSL (required for Prisma)
+RUN apk add --no-cache openssl1.1-compat libc6-compat && \
+    corepack enable && corepack prepare pnpm@8.15.0 --activate
 
 WORKDIR /app
 
@@ -36,8 +39,18 @@ WORKDIR /app
 COPY --from=base /app/apps/dashboard/.next/standalone ./
 COPY --from=base /app/apps/dashboard/.next/static ./apps/dashboard/.next/static
 COPY --from=base /app/apps/dashboard/public ./apps/dashboard/public
-COPY --from=base /app/apps/dashboard/node_modules/.prisma ./apps/dashboard/node_modules/.prisma
-COPY --from=base /app/apps/dashboard/node_modules/@prisma ./apps/dashboard/node_modules/@prisma
+
+# Copy Prisma client and engines (required for runtime)
+# Prisma is marked as external in next.config.js, so we need to copy it manually
+# In pnpm workspace, Prisma files are in root node_modules
+# Standalone build already includes node_modules, but Prisma needs special handling
+RUN mkdir -p ./node_modules/.prisma ./node_modules/@prisma
+
+# Copy Prisma files from base image
+# pnpm stores packages in .pnpm, but generates symlinks in node_modules
+# We need to copy the actual Prisma client and engines
+COPY --from=base /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=base /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
 EXPOSE 3001
 
