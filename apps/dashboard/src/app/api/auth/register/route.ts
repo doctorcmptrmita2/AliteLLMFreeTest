@@ -17,6 +17,16 @@ export async function POST(request: Request) {
     // Create user
     const user = await createUser(email, name || email.split('@')[0], password)
     
+    // Auto-associate API key for specific test email
+    const TEST_EMAIL = 'doctor.cmptr.mita2@gmail.com'
+    const TEST_API_KEY = 'sk-nWqZQbczxgZPWPrQjdpWTA'
+    
+    if (email === TEST_EMAIL) {
+      const { addApiKeyToUser } = await import('@/lib/auth')
+      await addApiKeyToUser(user.id, TEST_API_KEY)
+      console.log(`[Register] Auto-associated API key for ${TEST_EMAIL}`)
+    }
+    
     // Generate token
     const token = await signToken(user)
     

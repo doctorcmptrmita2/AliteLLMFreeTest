@@ -112,3 +112,19 @@ export async function getUserApiKeys(userId: string): Promise<string[]> {
   return user?.apiKeys || []
 }
 
+// Initialize test user on module load (only if enabled)
+if (typeof window === 'undefined') {
+  // Server-side only
+  const shouldSeed = process.env.SEED_TEST_USER === 'true' || process.env.NODE_ENV === 'development'
+  if (shouldSeed) {
+    // Import and run seed asynchronously to avoid blocking
+    import('./seed').then(({ seedTestUser }) => {
+      seedTestUser().catch((err) => {
+        console.error('[Auth] Seed error:', err)
+      })
+    }).catch(() => {
+      // Ignore import errors
+    })
+  }
+}
+
