@@ -35,60 +35,108 @@ export async function GET(request: Request) {
     
     // Format logs for frontend - handle different LiteLLM log formats
     const formattedLogs = logs.map((log: any) => {
-      // Parse timestamp
+      // Parse timestamp - try multiple fields
       let timestamp = 'N/A'
-      if (log.created_at) {
-        timestamp = new Date(log.created_at).toLocaleString('tr-TR')
-      } else if (log.startTime) {
-        timestamp = new Date(log.startTime).toLocaleString('tr-TR')
+      const timestampFields = ['created_at', 'startTime', 'timestamp', 'time', 'date']
+      for (const field of timestampFields) {
+        if (log[field]) {
+          try {
+            timestamp = new Date(log[field]).toLocaleString('tr-TR')
+            break
+          } catch (e) {
+            // Continue to next field
+          }
+        }
       }
       
-      // Parse tokens
-      const promptTokens = log.prompt_tokens || log.request_data?.prompt_tokens || 0
-      const completionTokens = log.completion_tokens || log.request_data?.completion_tokens || 0
-      const totalTokens = log.total_tokens || (promptTokens + completionTokens)
+      // Parse tokens - try multiple field names
+      const promptTokens = log.prompt_tokens || log.request_data?.prompt_tokens || log.promptTokens || 0
+      const completionTokens = log.completion_tokens || log.request_data?.completion_tokens || log.completionTokens || 0
+      const totalTokens = log.total_tokens || log.totalTokens || (promptTokens + completionTokens) || 0
       
-      // Parse duration
+      // Parse duration - try multiple field names
       let duration = 'N/A'
-      if (log.duration) {
-        duration = `${(log.duration / 1000).toFixed(2)}s`
-      } else if (log.response_time) {
-        duration = `${(log.response_time / 1000).toFixed(2)}s`
+      const durationFields = ['duration', 'response_time', 'latency', 'time_taken']
+      for (const field of durationFields) {
+        if (log[field] !== undefined && log[field] !== null) {
+          const dur = typeof log[field] === 'number' ? log[field] : parseFloat(log[field])
+          if (!isNaN(dur)) {
+            duration = dur < 1000 ? `${dur.toFixed(2)}s` : `${(dur / 1000).toFixed(2)}s`
+            break
+          }
+        }
       }
       
-      // Parse API key
-      const apiKeyValue = log.api_key || log.user_api_key || log.user_api_key_hash || ''
+      // Parse API key - try multiple field names
+      const apiKeyFields = ['api_key', 'user_api_key', 'user_api_key_hash', 'api_key_hash', 'token']
+      let apiKeyValue = ''
+      for (const field of apiKeyFields) {
+        if (log[field]) {
+          apiKeyValue = String(log[field])
+          break
+        }
+      }
       const apiKeyDisplay = apiKeyValue ? 
         (apiKeyValue.length > 20 ? `${apiKeyValue.substring(0, 20)}...` : apiKeyValue) : 
         'N/A'
       
-      // Parse status
-      const status = log.status_code || log.response_status || log.status || 200
+      // Parse status - try multiple field names
+      const statusFields = ['status_code', 'response_status', 'status', 'http_status', 'code']
+      let status = 200
+      for (const field of statusFields) {
+        if (log[field] !== undefined && log[field] !== null) {
+          status = parseInt(String(log[field])) || 200
+          break
+        }
+      }
       
       // Parse key hash and name
-      const keyHash = log.user_api_key_hash || log.api_key_hash || ''
-      const keyName = log.metadata?.key_name || log.key_name || ''
+      const keyHash = log.user_api_key_hash || log.api_key_hash || log.key_hash || ''
+      const keyName = log.metadata?.key_name || log.key_name || log.metadata?.name || ''
       
       // Parse user
-      const user = log.user_id || log.internal_user_id || 'default_user_id'
+      const userFields = ['user_id', 'internal_user_id', 'user', 'end_user_id']
+      let user = 'default_user_id'
+      for (const field of userFields) {
+        if (log[field]) {
+          user = String(log[field])
+          break
+        }
+      }
       
       // Parse request ID
-      const requestId = log.request_id || log.id || log.log_id || ''
+      const requestIdFields = ['request_id', 'id', 'log_id', 'trace_id', 'requestId']
+      let requestId = ''
+      for (const field of requestIdFields) {
+        if (log[field]) {
+          requestId = String(log[field])
+          break
+        }
+      }
+      
+      // Parse model
+      const model = log.model || log.model_name || log.model_id || 'N/A'
+      
+      // Parse cost/spend
+      const cost = log.spend || log.cost || log.total_cost || 0
+      
+      // Parse endpoint/path
+      const endpoint = log.request_path || log.path || log.endpoint || '/v1/chat/completions'
       
       return {
         id: log.id || log.request_id || log.log_id || Math.random().toString(36),
         requestId: requestId.length > 20 ? `${requestId.substring(0, 20)}...` : requestId,
         timestamp,
-        endpoint: log.request_path || log.path || '/v1/chat/completions',
+        endpoint,
         method: log.request_method || log.method || 'POST',
         status,
         tokens: totalTokens,
-        cost: log.spend || log.cost || 0,
+        cost,
         duration,
         apiKey: apiKeyDisplay,
         keyHash: keyHash.length > 20 ? `${keyHash.substring(0, 20)}...` : keyHash,
         keyName,
-        model: log.model || log.model_name || 'N/A',
+        model,
         promptTokens,
         completionTokens,
         user,

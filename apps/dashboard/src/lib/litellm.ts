@@ -69,12 +69,37 @@ async function litellmRequest(endpoint: string, options: RequestInit = {}) {
 
 export async function getKeys() {
   try {
-    const data = await litellmRequest('/key/list')
-    // LiteLLM returns { data: [...] } or directly [...]
-    if (Array.isArray(data)) {
-      return data
+    // Try different endpoint formats
+    const endpoints = ['/key/list', '/v1/key/list']
+    
+    let data: any = null
+    
+    for (const endpoint of endpoints) {
+      try {
+        console.log('Fetching keys from LiteLLM:', endpoint)
+        data = await litellmRequest(endpoint)
+        
+        // LiteLLM returns { data: [...] } or directly [...]
+        if (data !== null && data !== undefined) {
+          if (Array.isArray(data)) {
+            return data
+          }
+          if (data.data && Array.isArray(data.data)) {
+            return data.data
+          }
+          if (data.keys && Array.isArray(data.keys)) {
+            return data.keys
+          }
+          // If we got a response but no array, return empty
+          return []
+        }
+      } catch (e) {
+        console.log(`Endpoint ${endpoint} failed, trying next...`)
+        continue
+      }
     }
-    return data.data || data.keys || []
+    
+    return []
   } catch (error) {
     console.error('Error fetching keys:', error)
     return []
@@ -83,20 +108,28 @@ export async function getKeys() {
 
 export async function getKeyInfo(keyId: string) {
   try {
-    // Try different endpoint formats
-    let data
-    try {
-      data = await litellmRequest(`/key/info?key_id=${keyId}`)
-    } catch (e) {
-      // Try alternative format
+    // Try different endpoint and parameter formats
+    const endpoints = [
+      `/key/info?key_id=${keyId}`,
+      `/key/info?api_key=${keyId}`,
+      `/key/info?token=${keyId}`,
+      `/v1/key/info?key_id=${keyId}`,
+    ]
+    
+    for (const endpoint of endpoints) {
       try {
-        data = await litellmRequest(`/key/info?api_key=${keyId}`)
-      } catch (e2) {
-        // Try with token parameter
-        data = await litellmRequest(`/key/info?token=${keyId}`)
+        console.log('Fetching key info from LiteLLM:', endpoint)
+        const data = await litellmRequest(endpoint)
+        if (data !== null && data !== undefined) {
+          return data
+        }
+      } catch (e) {
+        console.log(`Endpoint ${endpoint} failed, trying next...`)
+        continue
       }
     }
-    return data
+    
+    return null
   } catch (error) {
     console.error('Error fetching key info:', error)
     return null
@@ -125,29 +158,44 @@ export async function getKeySpend(apiKey: string, startDate?: string, endDate?: 
 
 export async function getUsage(startDate?: string, endDate?: string, apiKey?: string) {
   try {
-    // LiteLLM Admin API uses /global/activity/usage or /usage/global
-    let endpoint = '/global/activity/usage'
+    // LiteLLM Admin API endpoints for usage
+    const endpoints = [
+      '/global/activity/usage',
+      '/usage/global',
+      '/v1/usage/global',
+    ]
+    
     const params = new URLSearchParams()
     if (startDate) params.append('start_date', startDate)
     if (endDate) params.append('end_date', endDate)
-    // For usage, we can filter by api_key
+    
+    // Note: API key filtering may need to be done client-side
     const filterKey = apiKey || TEST_API_KEY
-    if (filterKey) {
-      params.append('api_key', filterKey)
+    
+    let data: any = null
+    let lastError: Error | null = null
+    
+    // Try each endpoint until one works
+    for (const endpoint of endpoints) {
+      try {
+        const fullEndpoint = params.toString() ? `${endpoint}?${params.toString()}` : endpoint
+        console.log('Fetching usage from LiteLLM:', fullEndpoint)
+        data = await litellmRequest(fullEndpoint)
+        
+        if (data !== null && data !== undefined) {
+          break
+        }
+      } catch (e) {
+        lastError = e instanceof Error ? e : new Error(String(e))
+        console.log(`Endpoint ${endpoint} failed, trying next...`)
+        continue
+      }
     }
     
-    if (params.toString()) {
-      endpoint += `?${params.toString()}`
-    }
-    
-    let data
-    try {
-      data = await litellmRequest(endpoint)
-    } catch (e) {
-      // Fallback to /usage/global endpoint
-      console.log('Trying fallback /usage/global endpoint')
-      endpoint = `/usage/global?${params.toString()}`
-      data = await litellmRequest(endpoint)
+    // If all endpoints failed, return null
+    if (data === null || data === undefined) {
+      console.warn('All usage endpoints failed')
+      return null
     }
     
     // If filtering by API key and we got all data, filter client-side
@@ -175,29 +223,44 @@ export async function getUsage(startDate?: string, endDate?: string, apiKey?: st
 
 export async function getSpend(startDate?: string, endDate?: string, apiKey?: string) {
   try {
-    // LiteLLM Admin API uses /global/activity/spend or /usage/spend
-    let endpoint = '/global/activity/spend'
+    // LiteLLM Admin API endpoints for spend
+    const endpoints = [
+      '/global/activity/spend',
+      '/usage/spend',
+      '/v1/usage/spend',
+    ]
+    
     const params = new URLSearchParams()
     if (startDate) params.append('start_date', startDate)
     if (endDate) params.append('end_date', endDate)
-    // For spend, we can filter by api_key
+    
+    // Note: API key filtering may need to be done client-side
     const filterKey = apiKey || TEST_API_KEY
-    if (filterKey) {
-      params.append('api_key', filterKey)
+    
+    let data: any = null
+    let lastError: Error | null = null
+    
+    // Try each endpoint until one works
+    for (const endpoint of endpoints) {
+      try {
+        const fullEndpoint = params.toString() ? `${endpoint}?${params.toString()}` : endpoint
+        console.log('Fetching spend from LiteLLM:', fullEndpoint)
+        data = await litellmRequest(fullEndpoint)
+        
+        if (data !== null && data !== undefined) {
+          break
+        }
+      } catch (e) {
+        lastError = e instanceof Error ? e : new Error(String(e))
+        console.log(`Endpoint ${endpoint} failed, trying next...`)
+        continue
+      }
     }
     
-    if (params.toString()) {
-      endpoint += `?${params.toString()}`
-    }
-    
-    let data
-    try {
-      data = await litellmRequest(endpoint)
-    } catch (e) {
-      // Fallback to /usage/spend endpoint
-      console.log('Trying fallback /usage/spend endpoint')
-      endpoint = `/usage/spend?${params.toString()}`
-      data = await litellmRequest(endpoint)
+    // If all endpoints failed, return null
+    if (data === null || data === undefined) {
+      console.warn('All spend endpoints failed')
+      return null
     }
     
     // If filtering by API key and we got all data, filter client-side
@@ -224,26 +287,47 @@ export async function getSpend(startDate?: string, endDate?: string, apiKey?: st
 
 export async function getLogs(startDate?: string, endDate?: string, limit = 100, apiKey?: string) {
   try {
-    // LiteLLM log endpoint - try different endpoint formats
-    // LiteLLM Admin API uses /global/activity/logs or /logs
-    let endpoint = '/global/activity/logs'
+    // LiteLLM Admin API endpoint for logs
+    // Try multiple endpoint formats based on LiteLLM version
+    const endpoints = [
+      '/global/activity/logs',
+      '/logs',
+      '/v1/logs',
+    ]
+    
     const params = new URLSearchParams()
     params.append('limit', limit.toString())
     
     if (startDate) params.append('start_date', startDate)
     if (endDate) params.append('end_date', endDate)
     
-    endpoint = `${endpoint}?${params.toString()}`
+    // Note: API key filtering is done client-side as LiteLLM may not support it in query params
     
-    console.log('Fetching logs from LiteLLM:', endpoint)
-    let data
-    try {
-      data = await litellmRequest(endpoint)
-    } catch (e) {
-      // Fallback to /logs endpoint
-      console.log('Trying fallback /logs endpoint')
-      endpoint = `/logs?${params.toString()}`
-      data = await litellmRequest(endpoint)
+    let data: any = null
+    let lastError: Error | null = null
+    
+    // Try each endpoint until one works
+    for (const endpoint of endpoints) {
+      try {
+        const fullEndpoint = `${endpoint}?${params.toString()}`
+        console.log('Fetching logs from LiteLLM:', fullEndpoint)
+        data = await litellmRequest(fullEndpoint)
+        
+        // If we got data (even if empty), use this endpoint
+        if (data !== null && data !== undefined) {
+          break
+        }
+      } catch (e) {
+        lastError = e instanceof Error ? e : new Error(String(e))
+        console.log(`Endpoint ${endpoint} failed, trying next...`)
+        continue
+      }
+    }
+    
+    // If all endpoints failed, return empty array
+    if (data === null || data === undefined) {
+      console.warn('All log endpoints failed, returning empty array')
+      return []
     }
     
     // Handle different response formats
@@ -303,20 +387,34 @@ export async function createKey(keyName: string, metadata?: Record<string, any>)
       }
     }
     
-    const data = await litellmRequest('/key/generate', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    })
+    // Try different endpoint formats
+    const endpoints = ['/key/generate', '/v1/key/generate']
     
-    // Handle different response formats
-    if (data.key) {
-      return { token: data.key, key_id: data.key_id || data.key }
-    }
-    if (data.token) {
-      return { token: data.token, key_id: data.key_id || data.token }
+    for (const endpoint of endpoints) {
+      try {
+        console.log('Creating key via LiteLLM:', endpoint)
+        const data = await litellmRequest(endpoint, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        })
+        
+        // Handle different response formats
+        if (data.key) {
+          return { token: data.key, key_id: data.key_id || data.key }
+        }
+        if (data.token) {
+          return { token: data.token, key_id: data.key_id || data.token }
+        }
+        if (data) {
+          return data
+        }
+      } catch (e) {
+        console.log(`Endpoint ${endpoint} failed, trying next...`)
+        continue
+      }
     }
     
-    return data
+    throw new Error('All key generation endpoints failed')
   } catch (error) {
     console.error('Error creating key:', error)
     throw error
@@ -325,19 +423,30 @@ export async function createKey(keyName: string, metadata?: Record<string, any>)
 
 export async function deleteKey(keyId: string) {
   try {
-    // Try different delete formats
-    let data
-    try {
-      data = await litellmRequest(`/key/delete?key_id=${keyId}`, {
-        method: 'DELETE',
-      })
-    } catch (e) {
-      // Try with api_key parameter
-      data = await litellmRequest(`/key/delete?api_key=${keyId}`, {
-        method: 'DELETE',
-      })
+    // Try different delete endpoint and parameter formats
+    const endpoints = [
+      `/key/delete?key_id=${keyId}`,
+      `/key/delete?api_key=${keyId}`,
+      `/key/delete?token=${keyId}`,
+      `/v1/key/delete?key_id=${keyId}`,
+    ]
+    
+    for (const endpoint of endpoints) {
+      try {
+        console.log('Deleting key via LiteLLM:', endpoint)
+        const data = await litellmRequest(endpoint, {
+          method: 'DELETE',
+        })
+        if (data !== null && data !== undefined) {
+          return data
+        }
+      } catch (e) {
+        console.log(`Endpoint ${endpoint} failed, trying next...`)
+        continue
+      }
     }
-    return data
+    
+    throw new Error('All key deletion endpoints failed')
   } catch (error) {
     console.error('Error deleting key:', error)
     throw error

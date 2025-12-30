@@ -26,11 +26,11 @@ export async function GET(request: Request) {
       getKeys(),
     ])
     
-    // Calculate stats
-    const totalRequests = usage?.total_requests || 0
-    const totalTokens = usage?.total_tokens || 0
-    const totalCost = spend?.total_spend || 0
-    const dailyRequests = dailyUsage?.total_requests || 0
+    // Calculate stats - handle different response formats
+    const totalRequests = usage?.total_requests || usage?.requests || 0
+    const totalTokens = usage?.total_tokens || usage?.tokens || 0
+    const totalCost = spend?.total_spend || spend?.spend || spend?.cost || 0
+    const dailyRequests = dailyUsage?.total_requests || dailyUsage?.requests || 0
     
     // Calculate monthly quota (default 1M tokens)
     const monthlyQuota = 1000000

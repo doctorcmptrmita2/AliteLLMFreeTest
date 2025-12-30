@@ -16,9 +16,16 @@ export async function GET(request: Request) {
     // Get logs for analytics
     const logs = await getLogs(startDateStr, endDateStr, 1000, apiKey)
     
-    // Calculate analytics
+    // Calculate analytics - handle different log formats
     const successfulLogs = logs.filter((log: any) => {
-      const status = log.status_code || log.response_status || log.status || 200
+      const statusFields = ['status_code', 'response_status', 'status', 'http_status', 'code']
+      let status = 200
+      for (const field of statusFields) {
+        if (log[field] !== undefined && log[field] !== null) {
+          status = parseInt(String(log[field])) || 200
+          break
+        }
+      }
       return status >= 200 && status < 300
     })
     
@@ -26,23 +33,31 @@ export async function GET(request: Request) {
     const successfulRequests = successfulLogs.length
     const successRate = totalRequests > 0 ? (successfulRequests / totalRequests) * 100 : 0
     
-    // Calculate average response time
+    // Calculate average response time - try multiple duration fields
     let totalDuration = 0
     let durationCount = 0
     logs.forEach((log: any) => {
-      const duration = log.duration || log.response_time
-      if (duration) {
-        totalDuration += duration
-        durationCount++
+      const durationFields = ['duration', 'response_time', 'latency', 'time_taken']
+      for (const field of durationFields) {
+        if (log[field] !== undefined && log[field] !== null) {
+          const dur = typeof log[field] === 'number' ? log[field] : parseFloat(log[field])
+          if (!isNaN(dur)) {
+            totalDuration += dur < 1000 ? dur : dur / 1000 // Convert to seconds if in milliseconds
+            durationCount++
+            break
+          }
+        }
       }
     })
-    const avgResponseTime = durationCount > 0 ? (totalDuration / durationCount / 1000).toFixed(1) : '0'
+    const avgResponseTime = durationCount > 0 ? (totalDuration / durationCount).toFixed(1) : '0'
     
-    // Calculate average tokens per request
+    // Calculate average tokens per request - try multiple token fields
     let totalTokens = 0
     let tokenCount = 0
     logs.forEach((log: any) => {
-      const tokens = log.total_tokens || (log.prompt_tokens || 0) + (log.completion_tokens || 0)
+      const tokens = log.total_tokens || log.totalTokens || 
+                     (log.prompt_tokens || log.promptTokens || 0) + 
+                     (log.completion_tokens || log.completionTokens || 0)
       if (tokens > 0) {
         totalTokens += tokens
         tokenCount++
@@ -58,9 +73,17 @@ export async function GET(request: Request) {
       const dateStr = date.toISOString().split('T')[0]
       
       const dayLogs = logs.filter((log: any) => {
-        const logDate = log.created_at || log.startTime
-        if (!logDate) return false
-        return new Date(logDate).toISOString().split('T')[0] === dateStr
+        const dateFields = ['created_at', 'startTime', 'timestamp', 'time', 'date']
+        for (const field of dateFields) {
+          if (log[field]) {
+            try {
+              return new Date(log[field]).toISOString().split('T')[0] === dateStr
+            } catch (e) {
+              // Continue to next field
+            }
+          }
+        }
+        return false
       })
       
       dailyTrend.push({
@@ -69,10 +92,17 @@ export async function GET(request: Request) {
       })
     }
     
-    // Get endpoint distribution
+    // Get endpoint distribution - try multiple path fields
     const endpointCounts: Record<string, number> = {}
     logs.forEach((log: any) => {
-      const endpoint = log.request_path || log.path || '/v1/chat/completions'
+      const endpointFields = ['request_path', 'path', 'endpoint', 'url', 'route']
+      let endpoint = '/v1/chat/completions'
+      for (const field of endpointFields) {
+        if (log[field]) {
+          endpoint = String(log[field])
+          break
+        }
+      }
       endpointCounts[endpoint] = (endpointCounts[endpoint] || 0) + 1
     })
     
