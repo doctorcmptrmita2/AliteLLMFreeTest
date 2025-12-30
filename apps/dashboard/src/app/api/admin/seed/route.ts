@@ -57,11 +57,22 @@ export async function POST(request: Request) {
           },
         })
         // Reload user
-        user = await prisma.user.findUnique({
+        const reloadedUser = await prisma.user.findUnique({
           where: { email: testEmail },
           include: { apiKeys: true },
-        })!
+        })
+        if (reloadedUser) {
+          user = reloadedUser
+        }
       }
+    }
+    
+    // Ensure user is not null
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Failed to create or retrieve user' },
+        { status: 500 }
+      )
     }
     
     return NextResponse.json({
