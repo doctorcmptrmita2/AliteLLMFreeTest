@@ -1,13 +1,33 @@
 import { NextResponse } from 'next/server'
 import { getLogs } from '@/lib/litellm'
+import { getCurrentUser, getUserApiKeys } from '@/lib/auth'
 
 export async function GET(request: Request) {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401 }
+      )
+    }
+    
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('start_date') || undefined
     const endDate = searchParams.get('end_date') || undefined
     const limit = parseInt(searchParams.get('limit') || '100')
-    const apiKey = searchParams.get('api_key') || process.env.TEST_API_KEY || 'sk-o3aQF9PIyMLQYYSTs4h5qg'
+    
+    // Get user's API keys
+    const userApiKeyIds = await getUserApiKeys(user.id)
+    if (userApiKeyIds.length === 0) {
+      return NextResponse.json([])
+    }
+    
+    // Get API key from query params or use first user key
+    const requestedKey = searchParams.get('api_key')
+    const apiKey = requestedKey && userApiKeyIds.includes(requestedKey)
+      ? requestedKey
+      : userApiKeyIds[0]
     
     console.log('[/api/logs] Fetching logs with params:', { 
       startDate, 

@@ -1,11 +1,38 @@
 import { NextResponse } from 'next/server'
 import { getUsage, getSpend, getKeys } from '@/lib/litellm'
+import { getCurrentUser, getUserApiKeys } from '@/lib/auth'
 
 export async function GET(request: Request) {
   try {
-    // Get API key from query params or use test key
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401 }
+      )
+    }
+    
+    // Get user's API keys
+    const userApiKeyIds = await getUserApiKeys(user.id)
+    if (userApiKeyIds.length === 0) {
+      // No API keys yet, return empty stats
+      return NextResponse.json({
+        totalRequests: 0,
+        dailyRequests: 0,
+        totalTokens: 0,
+        totalCost: 0,
+        monthlyQuota: 1000000,
+        monthlyUsed: 0,
+        keysCount: 0,
+      })
+    }
+    
+    // Get API key from query params or use first user key
     const { searchParams } = new URL(request.url)
-    const apiKey = searchParams.get('api_key') || process.env.TEST_API_KEY || 'sk-o3aQF9PIyMLQYYSTs4h5qg'
+    const requestedKey = searchParams.get('api_key')
+    const apiKey = requestedKey && userApiKeyIds.includes(requestedKey) 
+      ? requestedKey 
+      : userApiKeyIds[0] // Use first key if not specified or invalid
     
     // Get current month dates
     const now = new Date()

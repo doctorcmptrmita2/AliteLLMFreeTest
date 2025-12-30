@@ -21,7 +21,7 @@ export default function Home() {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 mb-12">
                   <Link
-                    href="/dashboard"
+                    href="https://dashbord.roo-code-orchestrator-workflow-orchestrator.lc58dd.easypanel.host/register"
                     className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-lg hover:shadow-purple-500/50 transition-all transform hover:-translate-y-1 text-center"
                   >
                     🚀 Hemen Başla

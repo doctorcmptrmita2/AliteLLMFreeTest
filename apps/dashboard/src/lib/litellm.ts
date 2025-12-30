@@ -43,14 +43,22 @@ async function litellmRequest(endpoint: string, options: RequestInit = {}) {
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error')
-      console.error(`LiteLLM API error (${response.status}) for ${endpoint}:`, errorText)
-      
-      // Don't throw for 404 or empty responses - just return empty
-      if (response.status === 404) {
-        console.warn('LiteLLM endpoint not found, returning empty result')
-        return { data: [] }
+      let errorData: any = null
+      try {
+        errorData = JSON.parse(errorText)
+      } catch (e) {
+        // Not JSON, use as text
       }
       
+      console.error(`LiteLLM API error (${response.status}) for ${endpoint}:`, errorText)
+      
+      // Don't throw for 404 - return null so caller can handle fallback
+      if (response.status === 404) {
+        console.warn('LiteLLM endpoint not found, returning null for fallback')
+        return null
+      }
+      
+      // For other errors, throw
       throw new Error(`LiteLLM API error (${response.status}): ${errorText}`)
     }
 
@@ -158,10 +166,11 @@ export async function getKeySpend(apiKey: string, startDate?: string, endDate?: 
 
 export async function getUsage(startDate?: string, endDate?: string, apiKey?: string) {
   try {
-    // LiteLLM Admin API endpoints for usage
+    // LiteLLM Admin API endpoints for usage - try correct order
+    // LiteLLM uses /global/activity/usage or /usage/global
     const endpoints = [
+      '/usage/global',  // Try this first - most common
       '/global/activity/usage',
-      '/usage/global',
       '/v1/usage/global',
     ]
     
@@ -169,8 +178,11 @@ export async function getUsage(startDate?: string, endDate?: string, apiKey?: st
     if (startDate) params.append('start_date', startDate)
     if (endDate) params.append('end_date', endDate)
     
-    // Note: API key filtering may need to be done client-side
+    // If API key provided, add it to params
     const filterKey = apiKey || TEST_API_KEY
+    if (filterKey) {
+      params.append('api_key', filterKey)
+    }
     
     let data: any = null
     let lastError: Error | null = null
@@ -182,8 +194,12 @@ export async function getUsage(startDate?: string, endDate?: string, apiKey?: st
         console.log('Fetching usage from LiteLLM:', fullEndpoint)
         data = await litellmRequest(fullEndpoint)
         
-        if (data !== null && data !== undefined) {
-          break
+        // Check if we got valid data
+        if (data !== null && data !== undefined && !data.detail) {
+          // If we got an array or object with data, it's valid
+          if (Array.isArray(data) || (typeof data === 'object' && Object.keys(data).length > 0)) {
+            break
+          }
         }
       } catch (e) {
         lastError = e instanceof Error ? e : new Error(String(e))
@@ -192,21 +208,53 @@ export async function getUsage(startDate?: string, endDate?: string, apiKey?: st
       }
     }
     
-    // If all endpoints failed, return null
-    if (data === null || data === undefined) {
-      console.warn('All usage endpoints failed')
+    // If all endpoints failed, try database fallback
+    if (data === null || data === undefined || data.detail) {
+      console.warn('All usage endpoints failed, trying database fallback')
+      try {
+        const { getUsageFromDb } = await import('./db')
+        const dbUsage = await getUsageFromDb(startDate, endDate, apiKey)
+        if (dbUsage) {
+          console.log('Got usage from database:', dbUsage)
+          return dbUsage
+        }
+      } catch (e) {
+        console.error('Database fallback failed, trying logs calculation:', e)
+        // Fallback: Calculate usage from logs
+        try {
+          const logs = await getLogs(startDate, endDate, 10000, apiKey)
+          if (logs && logs.length > 0) {
+            const totalRequests = logs.length
+            const totalTokens = logs.reduce((sum: number, log: any) => {
+              return sum + (log.total_tokens || log.tokens || 0)
+            }, 0)
+            
+            return {
+              total_requests: totalRequests,
+              total_tokens: totalTokens,
+              requests: totalRequests,
+              tokens: totalTokens,
+            }
+          }
+        } catch (e2) {
+          console.error('Error calculating usage from logs:', e2)
+        }
+      }
+      
       return null
     }
     
     // If filtering by API key and we got all data, filter client-side
-    if (filterKey && data && !data.total_requests) {
-      // Try to get key-specific usage
+    if (filterKey && data && !data.total_requests && !data.requests) {
+      // Try to get key-specific usage from key info
       try {
         const keyInfo = await getKeyInfo(filterKey)
-        if (keyInfo) {
+        if (keyInfo && keyInfo.usage) {
           return {
-            total_requests: keyInfo.usage?.total_requests || 0,
-            total_tokens: keyInfo.usage?.total_tokens || 0,
+            total_requests: keyInfo.usage.total_requests || 0,
+            total_tokens: keyInfo.usage.total_tokens || 0,
+            requests: keyInfo.usage.total_requests || 0,
+            tokens: keyInfo.usage.total_tokens || 0,
           }
         }
       } catch (e) {
@@ -223,10 +271,10 @@ export async function getUsage(startDate?: string, endDate?: string, apiKey?: st
 
 export async function getSpend(startDate?: string, endDate?: string, apiKey?: string) {
   try {
-    // LiteLLM Admin API endpoints for spend
+    // LiteLLM Admin API endpoints for spend - try correct order
     const endpoints = [
+      '/usage/spend',  // Try this first
       '/global/activity/spend',
-      '/usage/spend',
       '/v1/usage/spend',
     ]
     
@@ -234,8 +282,11 @@ export async function getSpend(startDate?: string, endDate?: string, apiKey?: st
     if (startDate) params.append('start_date', startDate)
     if (endDate) params.append('end_date', endDate)
     
-    // Note: API key filtering may need to be done client-side
+    // If API key provided, add it to params
     const filterKey = apiKey || TEST_API_KEY
+    if (filterKey) {
+      params.append('api_key', filterKey)
+    }
     
     let data: any = null
     let lastError: Error | null = null
@@ -247,8 +298,11 @@ export async function getSpend(startDate?: string, endDate?: string, apiKey?: st
         console.log('Fetching spend from LiteLLM:', fullEndpoint)
         data = await litellmRequest(fullEndpoint)
         
-        if (data !== null && data !== undefined) {
-          break
+        // Check if we got valid data
+        if (data !== null && data !== undefined && !data.detail) {
+          if (typeof data === 'object' && Object.keys(data).length > 0) {
+            break
+          }
         }
       } catch (e) {
         lastError = e instanceof Error ? e : new Error(String(e))
@@ -257,20 +311,54 @@ export async function getSpend(startDate?: string, endDate?: string, apiKey?: st
       }
     }
     
-    // If all endpoints failed, return null
-    if (data === null || data === undefined) {
-      console.warn('All spend endpoints failed')
+    // If all endpoints failed, try database fallback
+    if (data === null || data === undefined || data.detail) {
+      console.warn('All spend endpoints failed, trying database fallback')
+      try {
+        const { getUsageFromDb } = await import('./db')
+        const dbUsage = await getUsageFromDb(startDate, endDate, apiKey)
+        if (dbUsage && dbUsage.total_spend !== undefined) {
+          console.log('Got spend from database:', dbUsage.total_spend)
+          return {
+            total_spend: dbUsage.total_spend,
+            spend: dbUsage.total_spend,
+            cost: dbUsage.total_spend,
+          }
+        }
+      } catch (e) {
+        console.error('Database fallback failed, trying logs calculation:', e)
+        // Fallback: Calculate spend from logs
+        try {
+          const logs = await getLogs(startDate, endDate, 10000, apiKey)
+          if (logs && logs.length > 0) {
+            const totalSpend = logs.reduce((sum: number, log: any) => {
+              return sum + (log.spend || log.cost || 0)
+            }, 0)
+            
+            return {
+              total_spend: totalSpend,
+              spend: totalSpend,
+              cost: totalSpend,
+            }
+          }
+        } catch (e2) {
+          console.error('Error calculating spend from logs:', e2)
+        }
+      }
+      
       return null
     }
     
     // If filtering by API key and we got all data, filter client-side
-    if (filterKey && data && !data.total_spend) {
+    if (filterKey && data && !data.total_spend && !data.spend) {
       // Try to get key-specific spend
       try {
         const keyInfo = await getKeyInfo(filterKey)
         if (keyInfo) {
           return {
-            total_spend: keyInfo.spend || 0,
+            total_spend: keyInfo.spend || keyInfo.total_spend || 0,
+            spend: keyInfo.spend || 0,
+            cost: keyInfo.spend || 0,
           }
         }
       } catch (e) {
@@ -287,11 +375,11 @@ export async function getSpend(startDate?: string, endDate?: string, apiKey?: st
 
 export async function getLogs(startDate?: string, endDate?: string, limit = 100, apiKey?: string) {
   try {
-    // LiteLLM Admin API endpoint for logs
-    // Try multiple endpoint formats based on LiteLLM version
+    // LiteLLM Admin API endpoint for logs - try correct order
+    // LiteLLM typically uses /logs or /global/activity/logs
     const endpoints = [
+      '/logs',  // Try this first - most common
       '/global/activity/logs',
-      '/logs',
       '/v1/logs',
     ]
     
@@ -301,7 +389,12 @@ export async function getLogs(startDate?: string, endDate?: string, limit = 100,
     if (startDate) params.append('start_date', startDate)
     if (endDate) params.append('end_date', endDate)
     
-    // Note: API key filtering is done client-side as LiteLLM may not support it in query params
+    // If API key provided, try to filter by it
+    const filterKey = apiKey || TEST_API_KEY
+    if (filterKey) {
+      // Try different parameter names
+      params.append('api_key', filterKey)
+    }
     
     let data: any = null
     let lastError: Error | null = null
@@ -313,9 +406,12 @@ export async function getLogs(startDate?: string, endDate?: string, limit = 100,
         console.log('Fetching logs from LiteLLM:', fullEndpoint)
         data = await litellmRequest(fullEndpoint)
         
-        // If we got data (even if empty), use this endpoint
-        if (data !== null && data !== undefined) {
-          break
+        // Check if we got valid data (not 404 error)
+        if (data !== null && data !== undefined && !data.detail && !data.error) {
+          // If we got an array or object with data, it's valid
+          if (Array.isArray(data) || (typeof data === 'object' && !data.detail)) {
+            break
+          }
         }
       } catch (e) {
         lastError = e instanceof Error ? e : new Error(String(e))
@@ -324,9 +420,20 @@ export async function getLogs(startDate?: string, endDate?: string, limit = 100,
       }
     }
     
-    // If all endpoints failed, return empty array
-    if (data === null || data === undefined) {
-      console.warn('All log endpoints failed, returning empty array')
+    // If all endpoints failed, try database fallback
+    if (data === null || data === undefined || data.detail || data.error) {
+      console.warn('All log endpoints failed, trying database fallback')
+      try {
+        const { getLogsFromDb } = await import('./db')
+        const dbLogs = await getLogsFromDb(startDate, endDate, limit, apiKey)
+        if (dbLogs && dbLogs.length > 0) {
+          console.log(`Got ${dbLogs.length} logs from database`)
+          return dbLogs
+        }
+      } catch (e) {
+        console.error('Database fallback failed:', e)
+      }
+      
       return []
     }
     
@@ -377,14 +484,11 @@ export async function getLogs(startDate?: string, endDate?: string, limit = 100,
 export async function createKey(keyName: string, metadata?: Record<string, any>) {
   try {
     // LiteLLM key generation format
-    const payload: any = {}
-    
-    // Add metadata if provided
-    if (keyName || metadata) {
-      payload.metadata = {
+    const payload: any = {
+      metadata: {
         key_name: keyName,
         ...metadata,
-      }
+      },
     }
     
     // Try different endpoint formats
@@ -392,24 +496,28 @@ export async function createKey(keyName: string, metadata?: Record<string, any>)
     
     for (const endpoint of endpoints) {
       try {
-        console.log('Creating key via LiteLLM:', endpoint)
+        console.log('Creating key via LiteLLM:', endpoint, payload)
         const data = await litellmRequest(endpoint, {
           method: 'POST',
           body: JSON.stringify(payload),
         })
         
         // Handle different response formats
-        if (data.key) {
-          return { token: data.key, key_id: data.key_id || data.key }
-        }
-        if (data.token) {
-          return { token: data.token, key_id: data.key_id || data.token }
-        }
-        if (data) {
+        if (data && !data.error && !data.detail) {
+          if (data.key) {
+            return { token: data.key, key_id: data.key_id || data.key }
+          }
+          if (data.token) {
+            return { token: data.token, key_id: data.key_id || data.token }
+          }
+          if (data.key_id) {
+            return { token: data.key_id, key_id: data.key_id }
+          }
+          // If we got data, return it
           return data
         }
       } catch (e) {
-        console.log(`Endpoint ${endpoint} failed, trying next...`)
+        console.log(`Endpoint ${endpoint} failed:`, e)
         continue
       }
     }

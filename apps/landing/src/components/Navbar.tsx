@@ -26,12 +26,20 @@ export default function Navbar() {
             <Link href="/about" className="text-gray-300 hover:text-purple-400 transition font-medium">
               Hakkımızda
             </Link>
-            <Link
-              href="/dashboard"
-              className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition-all transform hover:-translate-y-0.5"
-            >
-              Dashboard
-            </Link>
+            <div className="flex items-center gap-4">
+              <Link
+                href="https://dashbord.roo-code-orchestrator-workflow-orchestrator.lc58dd.easypanel.host/login"
+                className="text-gray-300 hover:text-purple-400 transition font-medium"
+              >
+                Giriş Yap
+              </Link>
+              <Link
+                href="https://dashbord.roo-code-orchestrator-workflow-orchestrator.lc58dd.easypanel.host/register"
+                className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition-all transform hover:-translate-y-0.5"
+              >
+                Kayıt Ol
+              </Link>
+            </div>
           </div>
         </div>
       </div>

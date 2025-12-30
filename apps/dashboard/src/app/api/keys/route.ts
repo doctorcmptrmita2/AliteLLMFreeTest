@@ -1,9 +1,26 @@
 import { NextResponse } from 'next/server'
 import { getKeys, createKey, deleteKey } from '@/lib/litellm'
+import { getCurrentUser, getUserApiKeys, addApiKeyToUser } from '@/lib/auth'
 
 export async function GET() {
   try {
-    const keys = await getKeys()
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401 }
+      )
+    }
+    
+    // Get all keys from LiteLLM
+    const allKeys = await getKeys()
+    
+    // Filter to only user's keys
+    const userApiKeyIds = await getUserApiKeys(user.id)
+    const keys = allKeys.filter((key: any) => {
+      const keyId = key.key_id || key.token || key.id || ''
+      return userApiKeyIds.includes(keyId)
+    })
     
     // Format keys for frontend - handle different LiteLLM key formats
     const formattedKeys = keys.map((key: any) => {
@@ -71,14 +88,39 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401 }
+      )
+    }
+    
     const { name } = await request.json()
     
-    const newKey = await createKey(name || 'New API Key')
+    // Create key in LiteLLM with user metadata
+    // LiteLLM uses user_id in metadata to associate key with user
+    const newKey = await createKey(name || `Key for ${user.email}`, {
+      user_id: user.id,
+      user_email: user.email,
+      created_by: 'dashboard',
+    })
+    
+    // Get the actual key token and ID
+    const keyToken = newKey.token || newKey.key || newKey.key_id || ''
+    const keyId = newKey.key_id || newKey.token || keyToken
+    
+    if (!keyToken) {
+      throw new Error('Failed to create API key: No token returned')
+    }
+    
+    // Associate key with user in our system
+    await addApiKeyToUser(user.id, keyId)
     
     return NextResponse.json({
-      id: newKey.key_id || newKey.token,
+      id: keyId,
       name: name || 'New API Key',
-      key: newKey.token || newKey.key_id || '',
+      key: keyToken, // Return the full token so user can copy it
       created: new Date().toISOString().split('T')[0],
       requests: 0,
       status: 'active',
@@ -86,7 +128,10 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error creating key:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        details: process.env.NODE_ENV === 'development' ? String(error) : undefined
+      },
       { status: 500 }
     )
   }
