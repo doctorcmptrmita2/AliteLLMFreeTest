@@ -43,9 +43,6 @@ RUN pnpm install --prod --frozen-lockfile || pnpm install --prod
 RUN chmod +x ./apps/orchestrator/dist/index.js
 RUN chmod +x ./apps/orchestrator/dist/server.js
 
-# Set entrypoint (can be overridden for CLI mode)
-ENTRYPOINT ["node"]
-
 # Default: Run HTTP API server (can be overridden for CLI: node apps/orchestrator/dist/index.js <command>)
-CMD ["./apps/orchestrator/dist/server.js"]
+CMD ["node", "./apps/orchestrator/dist/server.js"]
 
