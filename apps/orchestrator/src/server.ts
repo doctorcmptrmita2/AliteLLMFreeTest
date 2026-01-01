@@ -50,6 +50,10 @@ app.post('/cf-x', async (req, res) => {
 
     const result = await client.cfX(task);
 
+    const filesInfo = result.executedFiles.length > 0 
+      ? `\n📁 Oluşturulan/Düzenlenen Dosyalar:\n${result.executedFiles.map(f => `  - ${f}`).join('\n')}\n`
+      : '\n';
+
     return res.json({
       success: true,
       model: 'cf-x',
@@ -57,11 +61,13 @@ app.post('/cf-x', async (req, res) => {
         plan: result.plan,
         code: result.code,
         review: result.review,
+        executedFiles: result.executedFiles,
       },
       formatted: `🚀 CF-X 3 Katmanlı Model Sonuçları\n\n` +
         `📋 PLAN (DeepSeek V3.2):\n${'='.repeat(60)}\n${result.plan}\n\n` +
         `💻 CODE (MiniMax M2.1):\n${'='.repeat(60)}\n${result.code}\n\n` +
         `🔍 REVIEW (Gemini 2.5 Flash):\n${'='.repeat(60)}\n${result.review}\n\n` +
+        filesInfo +
         `✅ CF-X Pipeline tamamlandı!`,
     });
   } catch (error) {
@@ -82,7 +88,7 @@ app.post('/run', async (req, res) => {
     }
 
     if (cfX) {
-      // CF-X workflow
+      // CF-X workflow (with tool calling)
       const result = await client.cfX(task);
       return res.json({
         success: true,
@@ -91,12 +97,13 @@ app.post('/run', async (req, res) => {
           plan: result.plan,
           code: result.code,
           review: result.review,
+          executedFiles: result.executedFiles,
         },
       });
     } else {
-      // Standard workflow
+      // Standard workflow (no tool calling by default)
       const plan = await client.plan(task);
-      const code = await client.code(task, plan);
+      const code = await client.code(task, plan, false);
       const review = await client.review(task, plan, code);
 
       return res.json({
@@ -106,6 +113,7 @@ app.post('/run', async (req, res) => {
           plan,
           code,
           review,
+          executedFiles: client.getExecutedFiles(),
         },
       });
     }

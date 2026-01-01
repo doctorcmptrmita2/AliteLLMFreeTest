@@ -1,21 +1,49 @@
 /**
  * LiteLLM client with fallback logic for coder models
- * Supports timeout, retry with exponential backoff, and model fallback chain
+ * Supports timeout, retry with exponential backoff, model fallback chain, and tool calling
  */
+
+import * as fs from 'fs/promises';
+import * as path from 'path';
+
+interface ToolCall {
+  id: string;
+  type: 'function';
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
 
 interface LiteLLMRequest {
   model: string;
-  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+  messages: Array<{ 
+    role: 'system' | 'user' | 'assistant' | 'tool'; 
+    content: string | null;
+    tool_calls?: ToolCall[];
+    tool_call_id?: string;
+  }>;
   temperature?: number;
   max_tokens?: number;
+  tools?: Array<{
+    type: 'function';
+    function: {
+      name: string;
+      description: string;
+      parameters: Record<string, any>;
+    };
+  }>;
+  tool_choice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
 }
 
 interface LiteLLMResponse {
   choices: Array<{
     message: {
       role: string;
-      content: string;
+      content: string | null;
+      tool_calls?: ToolCall[];
     };
+    finish_reason?: string;
   }>;
 }
 
@@ -52,11 +80,281 @@ const CODER_MODELS = [
   'openrouter/qwen/qwen3-coder:free',
 ] as const;
 
+// Tool definitions for file operations
+const AVAILABLE_TOOLS = [
+  {
+    type: 'function' as const,
+    function: {
+      name: 'write_file',
+      description: 'Create or overwrite a file with the given content. Use this to create new files or completely replace existing files.',
+      parameters: {
+        type: 'object',
+        properties: {
+          file_path: {
+            type: 'string',
+            description: 'The path to the file to write (relative to workspace root)',
+          },
+          content: {
+            type: 'string',
+            description: 'The complete content to write to the file',
+          },
+        },
+        required: ['file_path', 'content'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'read_file',
+      description: 'Read the contents of a file. Use this to check existing code or read configuration files.',
+      parameters: {
+        type: 'object',
+        properties: {
+          file_path: {
+            type: 'string',
+            description: 'The path to the file to read (relative to workspace root)',
+          },
+        },
+        required: ['file_path'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'list_files',
+      description: 'List files and directories in a given path. Use this to explore the project structure.',
+      parameters: {
+        type: 'object',
+        properties: {
+          directory_path: {
+            type: 'string',
+            description: 'The directory path to list (relative to workspace root, use "." for root)',
+          },
+        },
+        required: ['directory_path'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'apply_diff',
+      description: 'Apply a unified diff to modify an existing file. Use this to make partial changes to files instead of rewriting them completely.',
+      parameters: {
+        type: 'object',
+        properties: {
+          file_path: {
+            type: 'string',
+            description: 'The path to the file to modify (relative to workspace root)',
+          },
+          diff: {
+            type: 'string',
+            description: 'The unified diff format changes to apply',
+          },
+        },
+        required: ['file_path', 'diff'],
+      },
+    },
+  },
+];
+
+// Workspace root directory (can be configured via environment variable)
+const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT || process.cwd();
+
 export class LiteLLMClient {
   private config: ClientConfig;
+  private executedFiles: string[] = []; // Track files created/modified during execution
 
   constructor(config: ClientConfig) {
     this.config = config;
+  }
+
+  /**
+   * Get list of files created/modified during execution
+   */
+  getExecutedFiles(): string[] {
+    return [...this.executedFiles];
+  }
+
+  /**
+   * Reset executed files list
+   */
+  resetExecutedFiles(): void {
+    this.executedFiles = [];
+  }
+
+  /**
+   * Execute a tool call
+   */
+  private async executeTool(toolName: string, args: any): Promise<string> {
+    try {
+      switch (toolName) {
+        case 'write_file': {
+          const filePath = path.join(WORKSPACE_ROOT, args.file_path);
+          const dir = path.dirname(filePath);
+          
+          // Ensure directory exists
+          await fs.mkdir(dir, { recursive: true });
+          
+          // Write file
+          await fs.writeFile(filePath, args.content, 'utf-8');
+          
+          if (!this.executedFiles.includes(args.file_path)) {
+            this.executedFiles.push(args.file_path);
+          }
+          
+          return `File "${args.file_path}" written successfully (${args.content.length} bytes)`;
+        }
+
+        case 'read_file': {
+          const filePath = path.join(WORKSPACE_ROOT, args.file_path);
+          const content = await fs.readFile(filePath, 'utf-8');
+          return `File "${args.file_path}" content:\n${content}`;
+        }
+
+        case 'list_files': {
+          const dirPath = path.join(WORKSPACE_ROOT, args.directory_path || '.');
+          const entries = await fs.readdir(dirPath, { withFileTypes: true });
+          
+          const files = entries
+            .filter(e => e.isFile())
+            .map(e => `📄 ${e.name}`);
+          const dirs = entries
+            .filter(e => e.isDirectory())
+            .map(e => `📁 ${e.name}/`);
+          
+          return `Files in "${args.directory_path || '.'}":\n${[...dirs, ...files].join('\n')}`;
+        }
+
+        case 'apply_diff': {
+          const filePath = path.join(WORKSPACE_ROOT, args.file_path);
+          
+          // Read existing file
+          let content = '';
+          try {
+            content = await fs.readFile(filePath, 'utf-8');
+          } catch (error) {
+            throw new Error(`File "${args.file_path}" does not exist. Use write_file to create it first.`);
+          }
+          
+          // Simple diff application (for production, use a proper diff library)
+          // This is a simplified version - in production, use a library like 'diff' or 'unidiff'
+          const lines = content.split('\n');
+          const diffLines = args.diff.split('\n');
+          
+          // Parse unified diff format (simplified)
+          let newContent = content;
+          for (const diffLine of diffLines) {
+            if (diffLine.startsWith('+') && !diffLine.startsWith('+++')) {
+              // Add line (simplified - proper diff parsing needed for production)
+              const addLine = diffLine.substring(1);
+              newContent += '\n' + addLine;
+            } else if (diffLine.startsWith('-') && !diffLine.startsWith('---')) {
+              // Remove line (simplified)
+              const removeLine = diffLine.substring(1);
+              newContent = newContent.replace(removeLine + '\n', '').replace(removeLine, '');
+            }
+          }
+          
+          await fs.writeFile(filePath, newContent, 'utf-8');
+          
+          if (!this.executedFiles.includes(args.file_path)) {
+            this.executedFiles.push(args.file_path);
+          }
+          
+          return `Diff applied to "${args.file_path}" successfully`;
+        }
+
+        default:
+          return `Unknown tool: ${toolName}`;
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return `Error executing ${toolName}: ${errorMessage}`;
+    }
+  }
+
+  /**
+   * Call LiteLLM API with tool calling support
+   * Handles tool calls in a loop until model returns final response
+   */
+  private async callAPIWithTools(
+    request: LiteLLMRequest,
+    maxToolIterations = 10
+  ): Promise<{ content: string; toolCalls: ToolCall[] }> {
+    const messages = [...request.messages];
+    let iterations = 0;
+
+    while (iterations < maxToolIterations) {
+      // Add tools to request
+      const requestWithTools: LiteLLMRequest = {
+        ...request,
+        messages,
+        tools: AVAILABLE_TOOLS,
+        tool_choice: request.tool_choice || 'auto',
+      };
+
+      const response = await this.callAPI(requestWithTools);
+      const choice = response.choices[0];
+      if (!choice) {
+        throw new Error('No response from API');
+      }
+
+      const message = choice.message;
+
+      // Add assistant message to conversation
+      messages.push({
+        role: 'assistant',
+        content: message.content,
+        tool_calls: message.tool_calls,
+      });
+
+      // If no tool calls, return final response
+      if (!message.tool_calls || message.tool_calls.length === 0) {
+        return {
+          content: message.content || '',
+          toolCalls: [],
+        };
+      }
+
+      // Execute tool calls
+      console.log(`🔧 Executing ${message.tool_calls.length} tool call(s)...`);
+      for (const toolCall of message.tool_calls) {
+        try {
+          const args = JSON.parse(toolCall.function.arguments);
+          const result = await this.executeTool(toolCall.function.name, args);
+          
+          console.log(`✅ Tool ${toolCall.function.name} executed: ${result.substring(0, 100)}...`);
+
+          // Add tool response to conversation
+          messages.push({
+            role: 'tool',
+            content: result,
+            tool_call_id: toolCall.id,
+          });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.error(`❌ Tool ${toolCall.function.name} failed:`, errorMessage);
+          
+          messages.push({
+            role: 'tool',
+            content: `Error: ${errorMessage}`,
+            tool_call_id: toolCall.id,
+          });
+        }
+      }
+
+      iterations++;
+    }
+
+    // If we've exhausted iterations, return the last content
+    const lastMessage = messages[messages.length - 1];
+    return {
+      content: lastMessage.content || 'Maximum tool iterations reached',
+      toolCalls: [],
+    };
   }
 
   /**
@@ -132,11 +430,11 @@ export class LiteLLMClient {
         {
           role: 'system',
           content:
-            'You are a planning assistant. Break down the given task into a clear, step-by-step plan. Output only the plan, no explanations.',
+            'You are a planning assistant. Break down the given task into a clear, step-by-step plan. Output ONLY the plan text. Do NOT use any tools, functions, or API calls. Output plain text only, no markdown, no explanations.',
         },
         {
           role: 'user',
-          content: `Task: ${task}\n\nCreate a detailed plan:`,
+          content: `Task: ${task}\n\nCreate a detailed step-by-step plan. Output only the plan text:`,
         },
       ],
       temperature: 0.7,
@@ -148,12 +446,20 @@ export class LiteLLMClient {
   }
 
   /**
-   * Call coder model with fallback chain
+   * Call coder model with fallback chain and tool calling support
    */
-  async code(task: string, plan: string): Promise<string> {
-    const systemPrompt = `You are a coding assistant. Generate code based on the task and plan. Output clean, production-ready code with proper error handling.`;
+  async code(task: string, plan: string, useTools = false): Promise<string> {
+    const systemPrompt = `You are a coding assistant. Generate code based on the task and plan. ${
+      useTools 
+        ? 'You can use tools (write_file, read_file, list_files, apply_diff) to create/edit files. Use tools to implement the code directly into files. If you need to check existing files, use read_file or list_files first.'
+        : 'Output the code directly as text. Do not use tools.'
+    }`;
 
-    const userPrompt = `Task: ${task}\n\nPlan:\n${plan}\n\nGenerate the code:`;
+    const userPrompt = `Task: ${task}\n\nPlan:\n${plan}\n\n${
+      useTools
+        ? 'Generate and implement the code using tools. Create or modify files as needed.'
+        : 'Generate the code. Output the code directly:'
+    }`;
 
     let lastError: Error | null = null;
 
@@ -168,10 +474,16 @@ export class LiteLLMClient {
           ],
           temperature: 0.3,
           max_tokens: 4000,
+          tool_choice: useTools ? 'auto' : 'none',
         };
 
-        const response = await this.callAPI(request);
-        return response.choices[0]?.message?.content ?? '';
+        if (useTools) {
+          const result = await this.callAPIWithTools(request);
+          return result.content || 'Code generation completed (check executed files)';
+        } else {
+          const response = await this.callAPI(request);
+          return response.choices[0]?.message?.content ?? '';
+        }
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
         // Continue to next model
@@ -195,11 +507,11 @@ export class LiteLLMClient {
         {
           role: 'system',
           content:
-            'You are a code reviewer. Review the code against the task and plan. Identify issues, suggest improvements, and verify completeness.',
+            'You are a code reviewer. Review the code against the task and plan. Identify issues, suggest improvements, and verify completeness. Output ONLY your review text. Do NOT use any tools, functions, or API calls. Output plain text review only.',
         },
         {
           role: 'user',
-          content: `Task: ${task}\n\nPlan:\n${plan}\n\nCode:\n${code}\n\nReview:`,
+          content: `Task: ${task}\n\nPlan:\n${plan}\n\nCode:\n${code}\n\nReview the code. Output only your review text:`,
         },
       ],
       temperature: 0.5,
@@ -213,8 +525,9 @@ export class LiteLLMClient {
   /**
    * CF-X Model: 3-layer workflow
    * Plan → Code → Review using specific models
+   * Code stage uses tool calling to create/edit files
    */
-  async cfX(task: string): Promise<{ plan: string; code: string; review: string }> {
+  async cfX(task: string): Promise<{ plan: string; code: string; review: string; executedFiles: string[] }> {
     // Step 1: Plan with DeepSeek V3.2
     console.log('📋 CF-X: Planning with DeepSeek V3.2...');
     const planRequest: LiteLLMRequest = {
@@ -223,11 +536,11 @@ export class LiteLLMClient {
         {
           role: 'system',
           content:
-            'You are a planning assistant. Break down the given task into a clear, step-by-step plan. Output only the plan, no explanations.',
+            'You are a planning assistant. Break down the given task into a clear, step-by-step plan. Output ONLY the plan text. Do NOT use any tools, functions, or API calls. Output plain text plan only, no markdown, no explanations.',
         },
         {
           role: 'user',
-          content: `Task: ${task}\n\nCreate a detailed plan:`,
+          content: `Task: ${task}\n\nCreate a detailed step-by-step plan. Output only the plan text:`,
         },
       ],
       temperature: 0.7,
@@ -236,26 +549,35 @@ export class LiteLLMClient {
     const planResponse = await this.callAPI(planRequest);
     const plan = planResponse.choices[0]?.message?.content ?? '';
 
-    // Step 2: Code with MiniMax M2.1
-    console.log('💻 CF-X: Coding with MiniMax M2.1...');
+    // Step 2: Code with MiniMax M2.1 (with tool calling)
+    console.log('💻 CF-X: Coding with MiniMax M2.1 (tool calling enabled)...');
+    this.resetExecutedFiles(); // Reset for this execution
+    
     const codeRequest: LiteLLMRequest = {
       model: CF_X_CODER,
       messages: [
         {
           role: 'system',
           content:
-            'You are a coding assistant. Generate code based on the task and plan. Output clean, production-ready code with proper error handling.',
+            'You are a coding assistant. Generate code based on the task and plan. Use tools (write_file, read_file, list_files, apply_diff) to create/edit files and implement the code directly. If you need to check existing files, use read_file or list_files first.',
         },
         {
           role: 'user',
-          content: `Task: ${task}\n\nPlan:\n${plan}\n\nGenerate the code:`,
+          content: `Task: ${task}\n\nPlan:\n${plan}\n\nGenerate and implement the code using tools. Create or modify files as needed:`,
         },
       ],
       temperature: 0.3,
       max_tokens: 4000,
+      tool_choice: 'auto',
     };
-    const codeResponse = await this.callAPI(codeRequest);
-    const code = codeResponse.choices[0]?.message?.content ?? '';
+    
+    const codeResult = await this.callAPIWithTools(codeRequest);
+    const code = codeResult.content || `Code implemented using tools. Files created/modified: ${this.getExecutedFiles().join(', ')}`;
+    const executedFiles = this.getExecutedFiles();
+    
+    if (executedFiles.length > 0) {
+      console.log(`📁 Files created/modified: ${executedFiles.join(', ')}`);
+    }
 
     // Step 3: Review with Gemini 2.5 Flash
     console.log('🔍 CF-X: Reviewing with Gemini 2.5 Flash...');
@@ -265,11 +587,11 @@ export class LiteLLMClient {
         {
           role: 'system',
           content:
-            'You are a code reviewer. Review the code against the task and plan. Identify issues, suggest improvements, and verify completeness. Check for bugs, security issues, and best practices.',
+            'You are a code reviewer. Review the code against the task and plan. Identify issues, suggest improvements, and verify completeness. Check for bugs, security issues, and best practices. Output ONLY your review text. Do NOT use any tools, functions, or API calls. Output plain text review only.',
         },
         {
           role: 'user',
-          content: `Task: ${task}\n\nPlan:\n${plan}\n\nCode:\n${code}\n\nReview the code for any errors, bugs, or improvements:`,
+          content: `Task: ${task}\n\nPlan:\n${plan}\n\nCode:\n${code}\n\nReview the code. Output only your review text:`,
         },
       ],
       temperature: 0.5,
@@ -278,7 +600,12 @@ export class LiteLLMClient {
     const reviewResponse = await this.callAPI(reviewRequest);
     const review = reviewResponse.choices[0]?.message?.content ?? '';
 
-    return { plan, code, review };
+    return { 
+      plan, 
+      code, 
+      review,
+      executedFiles: this.getExecutedFiles(),
+    };
   }
 }
 
