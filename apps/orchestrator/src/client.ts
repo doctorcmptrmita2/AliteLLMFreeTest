@@ -233,10 +233,18 @@ export class LiteLLMClient {
       const response = await this.callAPI(requestWithTools);
       const choice = response.choices[0];
       if (!choice) {
-        throw new Error('No response from API');
+        throw new Error('No response from API - empty choices array');
       }
 
       const message = choice.message;
+      if (!message) {
+        throw new Error('No message in API response');
+      }
+      
+      // Log finish reason for debugging
+      if (choice.finish_reason) {
+        console.log(`📊 Finish reason: ${choice.finish_reason}`);
+      }
 
       // Add assistant message to conversation
       messages.push({
@@ -247,14 +255,25 @@ export class LiteLLMClient {
 
       // If no tool calls, return final response
       if (!message.tool_calls || message.tool_calls.length === 0) {
+        // Ensure we have content, even if empty
+        const finalContent = message.content || 'Task completed successfully.';
         return {
-          content: message.content || '',
+          content: finalContent,
           toolCalls: [],
         };
+      }
+      
+      // If model made tool calls but also provided content, that's also acceptable
+      // (some models provide both tool calls and explanatory text)
+      if (message.content && message.content.trim().length > 0) {
+        // Model provided content along with tool calls - this is fine
+        // Continue to execute tools, but note the content
+        console.log(`📝 Model provided content along with tool calls: ${message.content.substring(0, 100)}...`);
       }
 
       // Execute tool calls
       console.log(`🔧 Executing ${message.tool_calls.length} tool call(s)...`);
+      let allToolsSucceeded = true;
       for (const toolCall of message.tool_calls) {
         try {
           const args = JSON.parse(toolCall.function.arguments);
@@ -269,6 +288,7 @@ export class LiteLLMClient {
             tool_call_id: toolCall.id,
           });
         } catch (error) {
+          allToolsSucceeded = false;
           const errorMessage = error instanceof Error ? error.message : String(error);
           console.error(`❌ Tool ${toolCall.function.name} failed:`, errorMessage);
           
@@ -280,13 +300,40 @@ export class LiteLLMClient {
         }
       }
 
+      // After tool execution, add a user message to guide model to provide final response
+      // Only if model didn't provide content along with tool calls
+      // This ensures model provides a summary/confirmation instead of just tool calls
+      if (!message.content || message.content.trim().length === 0) {
+        messages.push({
+          role: 'user',
+          content: allToolsSucceeded 
+            ? 'Tool execution completed successfully. Please provide a brief summary confirming what was accomplished. Do NOT call any more tools.'
+            : 'Tool execution completed with some errors. Please provide a brief summary of what was accomplished and any issues encountered. Do NOT call any more tools.',
+        });
+      }
+
       iterations++;
     }
 
-    // If we've exhausted iterations, return the last content
-    const lastMessage = messages[messages.length - 1];
+    // If we've exhausted iterations, try to find the last assistant message with content
+    // Look backwards through messages to find the last assistant message with content
+    let lastContent = 'Maximum tool iterations reached. Task may be incomplete.';
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg.role === 'assistant' && msg.content && msg.content.trim().length > 0) {
+        lastContent = msg.content;
+        break;
+      }
+    }
+    
+    // If we have executed files, include that in the response
+    const executedFiles = this.getExecutedFiles();
+    if (executedFiles.length > 0) {
+      lastContent += `\n\nFiles created/modified: ${executedFiles.join(', ')}`;
+    }
+    
     return {
-      content: lastMessage?.content || 'Maximum tool iterations reached',
+      content: lastContent,
       toolCalls: [],
     };
   }
@@ -522,9 +569,10 @@ export class LiteLLMClient {
 3. Example: For "create denem.php with a function", call write_file with:
    - file_path: "denem.php"
    - content: The complete PHP code with the function
-4. Always use tools - never output code as text only.
+4. After calling write_file tool and receiving confirmation, you MUST provide a brief summary message confirming what was done.
+5. Always use tools - never output code as text only.
 
-Now implement the task using tools:`
+Now implement the task using tools. After tool execution, provide a brief summary.`
             : `Task: ${task}\n\nPlan:\n${plan}\n\nProvide a helpful response or explanation. Do NOT use any tools. Output your response as plain text:`,
         },
       ],

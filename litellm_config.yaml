@@ -150,6 +150,19 @@ general_settings:
   # Failure callbacks (optional)
   # failure_callback: []
 
+# LiteLLM Caching Configuration
+# Prompt caching reduces costs by reusing cached responses for identical prompts
+litellm_settings:
+  # Enable caching globally
+  cache:
+    type: "redis"  # Use Redis if available, falls back to in_memory
+    # Cache TTL (Time To Live) in seconds - 1 hour default
+    ttl: 3600
+    # Cache prompt responses for identical requests
+    prompt_cache: true
+    # Cache completion responses
+    completion_cache: true
+
 # Error handling configuration
 errors:
   # Maximum number of mistakes/errors before guidance is shown
