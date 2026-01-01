@@ -65,7 +65,7 @@ services:
       retries: 5
       start_period: 60s
 
-  # Orchestrator CLI
+  # Orchestrator (CLI + HTTP API)
   orchestrator:
     build:
       context: .
@@ -74,17 +74,20 @@ services:
       LITELLM_BASE_URL: http://litellm:4000/v1
       LITELLM_API_KEY: ${LITELLM_API_KEY:-}
       REQUEST_TIMEOUT_MS: ${REQUEST_TIMEOUT_MS:-120000}
+      PORT: ${ORCHESTRATOR_PORT:-3000}
+      ORCHESTRATOR_MODE: ${ORCHESTRATOR_MODE:-api}  # 'api' or 'cli'
     depends_on:
       litellm:
         condition: service_healthy
     networks:
       - roo-code-network
-    restart: "no"
-    # Orchestrator is a CLI tool, not a long-running service
-    # Use: docker-compose run --rm orchestrator <command>
-    # Override entrypoint to keep container running
-    entrypoint: ["/bin/sh", "-c"]
-    command: ["sleep infinity"]
+    restart: unless-stopped
+    ports:
+      - "${ORCHESTRATOR_PORT:-3000}:3000"
+    # Orchestrator can run as HTTP API server or CLI
+    # API mode: node apps/orchestrator/dist/server.js
+    # CLI mode: node apps/orchestrator/dist/index.js <command>
+    command: ["node", "apps/orchestrator/dist/server.js"]
 
   # Landing Page
   landing:

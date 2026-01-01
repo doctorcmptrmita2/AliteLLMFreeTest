@@ -13,43 +13,124 @@ export async function POST(request: Request) {
       )
     }
 
-    // CF-X Model: Call orchestrator service
+    // CF-X Model: 3-layer workflow (Direct LiteLLM calls)
     if (model === 'cf-x') {
-      const orchestratorUrl = process.env.ORCHESTRATOR_URL || 'http://orchestrator:3000'
-      
+      const litellmBaseUrl = process.env.LITELLM_BASE_URL || 'http://litellm:4000/v1'
+      const litellmApiKey = process.env.TEST_API_KEY || 'sk-o3aQF9PIyMLQYYSTs4h5qg'
+
       try {
-        // Call orchestrator with CF-X flag
-        const response = await fetch(`${orchestratorUrl}/run`, {
+        // Step 1: Plan with DeepSeek V3.2
+        const planResponse = await fetch(`${litellmBaseUrl}/chat/completions`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${litellmApiKey}`,
           },
           body: JSON.stringify({
-            task,
-            cfX: true,
+            model: 'openrouter/deepseek/deepseek-v3.2',
+            messages: [
+              {
+                role: 'system',
+                content: 'You are a planning assistant. Break down the given task into a clear, step-by-step plan. Output only the plan, no explanations.',
+              },
+              {
+                role: 'user',
+                content: `Task: ${task}\n\nCreate a detailed plan:`,
+              },
+            ],
+            temperature: 0.7,
+            max_tokens: 2000,
           }),
         })
 
-        if (!response.ok) {
-          const errorText = await response.text()
-          return NextResponse.json(
-            { error: `Orchestrator error: ${errorText}` },
-            { status: response.status }
-          )
+        if (!planResponse.ok) {
+          throw new Error(`Plan step failed: ${await planResponse.text()}`)
         }
 
-        const data = await response.json()
+        const planData = await planResponse.json()
+        const plan = planData.choices?.[0]?.message?.content || 'Plan oluşturulamadı'
+
+        // Step 2: Code with MiniMax M2.1
+        const codeResponse = await fetch(`${litellmBaseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${litellmApiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'openrouter/minimax/minimax-m2.1',
+            messages: [
+              {
+                role: 'system',
+                content: 'You are a coding assistant. Generate code based on the task and plan. Output clean, production-ready code with proper error handling.',
+              },
+              {
+                role: 'user',
+                content: `Task: ${task}\n\nPlan:\n${plan}\n\nGenerate the code:`,
+              },
+            ],
+            temperature: 0.3,
+            max_tokens: 4000,
+          }),
+        })
+
+        if (!codeResponse.ok) {
+          throw new Error(`Code step failed: ${await codeResponse.text()}`)
+        }
+
+        const codeData = await codeResponse.json()
+        const code = codeData.choices?.[0]?.message?.content || 'Kod oluşturulamadı'
+
+        // Step 3: Review with Gemini 2.5 Flash
+        const reviewResponse = await fetch(`${litellmBaseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${litellmApiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'openrouter/google/gemini-2.5-flash',
+            messages: [
+              {
+                role: 'system',
+                content: 'You are a code reviewer. Review the code against the task and plan. Identify issues, suggest improvements, and verify completeness. Check for bugs, security issues, and best practices.',
+              },
+              {
+                role: 'user',
+                content: `Task: ${task}\n\nPlan:\n${plan}\n\nCode:\n${code}\n\nReview the code for any errors, bugs, or improvements:`,
+              },
+            ],
+            temperature: 0.5,
+            max_tokens: 2000,
+          }),
+        })
+
+        if (!reviewResponse.ok) {
+          throw new Error(`Review step failed: ${await reviewResponse.text()}`)
+        }
+
+        const reviewData = await reviewResponse.json()
+        const review = reviewData.choices?.[0]?.message?.content || 'İnceleme yapılamadı'
+
+        // Format output
+        const result = `🚀 CF-X 3 Katmanlı Model Sonuçları\n\n` +
+          `📋 PLAN (DeepSeek V3.2):\n${'='.repeat(60)}\n${plan}\n\n` +
+          `💻 CODE (MiniMax M2.1):\n${'='.repeat(60)}\n${code}\n\n` +
+          `🔍 REVIEW (Gemini 2.5 Flash):\n${'='.repeat(60)}\n${review}\n\n` +
+          `✅ CF-X Pipeline tamamlandı!`
+
         return NextResponse.json({
-          result: data.result || data.output || 'CF-X pipeline completed',
+          result,
           model: 'cf-x',
         })
       } catch (error) {
-        // Fallback: Call orchestrator via Docker exec or direct API
-        // For now, return a message that CF-X requires orchestrator
-        return NextResponse.json({
-          result: `CF-X Model Pipeline:\n\n📋 Plan: DeepSeek V3.2\n💻 Code: MiniMax M2.1\n🔍 Review: Gemini 2.5 Flash\n\nNote: CF-X requires orchestrator service. Please use CLI: docker-compose run --rm orchestrator run "${task}" --cf-x`,
-          model: 'cf-x',
-        })
+        return NextResponse.json(
+          { 
+            error: `CF-X Pipeline hatası: ${error instanceof Error ? error.message : String(error)}`,
+            model: 'cf-x',
+          },
+          { status: 500 }
+        )
       }
     }
 

@@ -40,12 +40,24 @@ COPY --from=base /app/apps/dashboard/.next/standalone ./
 COPY --from=base /app/apps/dashboard/.next/static ./apps/dashboard/.next/static
 COPY --from=base /app/apps/dashboard/public ./apps/dashboard/public
 
-# Prisma is automatically included in standalone build by Next.js
-# No need to manually copy Prisma files
+# Copy Prisma files for migrations
+COPY --from=base /app/apps/dashboard/prisma ./apps/dashboard/prisma
+COPY --from=base /app/apps/dashboard/node_modules/.prisma ./apps/dashboard/node_modules/.prisma
+COPY --from=base /app/apps/dashboard/node_modules/@prisma ./apps/dashboard/node_modules/@prisma
 
 EXPOSE 3001
 
 ENV PORT=3001
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "apps/dashboard/server.js"]
+# Create entrypoint script to run migrations before starting
+RUN echo '#!/bin/sh' > /entrypoint.sh && \
+    echo 'set -e' >> /entrypoint.sh && \
+    echo 'cd /app/apps/dashboard' >> /entrypoint.sh && \
+    echo 'echo "Running Prisma migrations..."' >> /entrypoint.sh && \
+    echo 'npx prisma migrate deploy || echo "Migration failed or already applied - continuing..."' >> /entrypoint.sh && \
+    echo 'echo "Starting dashboard server..."' >> /entrypoint.sh && \
+    echo 'exec node /app/apps/dashboard/server.js' >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
+
+CMD ["/entrypoint.sh"]
