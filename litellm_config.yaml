@@ -48,6 +48,7 @@ model_list:
       model: openrouter/anthropic/claude-sonnet-4.5
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
+      max_tokens: 4096  # Fix: Set reasonable limit (was causing 1M token error)
 
   # Grok 4.1 Fast (Best agentic tool calling, 2M context)
   - model_name: openrouter/x-ai/grok-4.1-fast
@@ -84,6 +85,22 @@ model_list:
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
 
+  # MiniMax M2.1 (Lightweight, optimized for coding, 204K context)
+  - model_name: openrouter/minimax/minimax-m2.1
+    litellm_params:
+      model: openrouter/minimax/minimax-m2.1
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+      max_tokens: 4096  # Reasonable limit (not 1M!)
+
+  # CF-X Model Group (3-layer workflow)
+  # This is a virtual model that uses different models for plan/code/review
+  - model_name: cf-x
+    litellm_params:
+      model: openrouter/deepseek/deepseek-v3.2  # Will be overridden by orchestrator
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
 general_settings:
   # Master key - MUST be set for Admin UI login
   # Set directly in config (for testing - in production use environment variable)
@@ -100,4 +117,12 @@ general_settings:
   
   # Failure callbacks (optional)
   # failure_callback: []
+
+# Error handling configuration
+errors:
+  # Maximum number of mistakes/errors before guidance is shown
+  mistake_limit: 5
+  
+  # Guidance message when mistake limit is reached
+  mistake_limit_guidance: "Too many errors detected. Please check your request parameters and try again."
 

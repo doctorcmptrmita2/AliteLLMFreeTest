@@ -111,36 +111,70 @@ program
   .command('run')
   .description('Run full pipeline: plan → code → review')
   .argument('<task>', 'The task to execute')
-  .action(async (task: string) => {
+  .option('--cf-x', 'Use CF-X model (DeepSeek V3.2 → MiniMax M2.1 → Gemini 2.5 Flash)')
+  .action(async (task: string, options: { cfX?: boolean }) => {
     try {
-      console.log('🚀 Running full pipeline...\n');
-      console.log('Task:', task, '\n');
+      if (options.cfX) {
+        // CF-X Model: 3-layer workflow
+        console.log('🚀 Running CF-X Model Pipeline...\n');
+        console.log('Task:', task, '\n');
+        console.log('Models:');
+        console.log('  📋 Plan: DeepSeek V3.2');
+        console.log('  💻 Code: MiniMax M2.1');
+        console.log('  🔍 Review: Gemini 2.5 Flash\n');
 
-      // Step 1: Plan
-      console.log('📋 Step 1/3: Planning...');
-      const plan = await client.plan(task);
-      console.log('✅ Plan generated\n');
-      console.log('---\n');
-      console.log(plan);
-      console.log('---\n\n');
+        const result = await client.cfX(task);
 
-      // Step 2: Code
-      console.log('💻 Step 2/3: Coding...');
-      const code = await client.code(task, plan);
-      console.log('✅ Code generated\n');
-      console.log('---\n');
-      console.log(code);
-      console.log('---\n\n');
+        console.log('='.repeat(60));
+        console.log('📋 PLAN (DeepSeek V3.2)');
+        console.log('='.repeat(60));
+        console.log(result.plan);
+        console.log('\n');
 
-      // Step 3: Review
-      console.log('🔍 Step 3/3: Reviewing...');
-      const review = await client.review(task, plan, code);
-      console.log('✅ Review completed\n');
-      console.log('---\n');
-      console.log(review);
-      console.log('---\n');
+        console.log('='.repeat(60));
+        console.log('💻 CODE (MiniMax M2.1)');
+        console.log('='.repeat(60));
+        console.log(result.code);
+        console.log('\n');
 
-      console.log('✅ Pipeline completed successfully!');
+        console.log('='.repeat(60));
+        console.log('🔍 REVIEW (Gemini 2.5 Flash)');
+        console.log('='.repeat(60));
+        console.log(result.review);
+        console.log('\n');
+
+        console.log('✅ CF-X Pipeline completed successfully!');
+      } else {
+        // Standard pipeline
+        console.log('🚀 Running full pipeline...\n');
+        console.log('Task:', task, '\n');
+
+        // Step 1: Plan
+        console.log('📋 Step 1/3: Planning...');
+        const plan = await client.plan(task);
+        console.log('✅ Plan generated\n');
+        console.log('---\n');
+        console.log(plan);
+        console.log('---\n\n');
+
+        // Step 2: Code
+        console.log('💻 Step 2/3: Coding...');
+        const code = await client.code(task, plan);
+        console.log('✅ Code generated\n');
+        console.log('---\n');
+        console.log(code);
+        console.log('---\n\n');
+
+        // Step 3: Review
+        console.log('🔍 Step 3/3: Reviewing...');
+        const review = await client.review(task, plan, code);
+        console.log('✅ Review completed\n');
+        console.log('---\n');
+        console.log(review);
+        console.log('---\n');
+
+        console.log('✅ Pipeline completed successfully!');
+      }
       process.exit(0);
     } catch (error) {
       console.error('❌ Pipeline failed:', error instanceof Error ? error.message : String(error));

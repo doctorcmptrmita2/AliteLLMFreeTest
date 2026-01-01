@@ -29,9 +29,15 @@ interface ClientConfig {
 const PLANNER_MODEL = 'openrouter/openai/gpt-4o-mini';
 const REVIEWER_MODEL = 'openrouter/openai/gpt-4o-mini';
 
+// CF-X Model Configuration (3-layer workflow)
+const CF_X_PLANNER = 'openrouter/deepseek/deepseek-v3.2';
+const CF_X_CODER = 'openrouter/minimax/minimax-m2.1';
+const CF_X_REVIEWER = 'openrouter/google/gemini-2.5-flash';
+
 const CODER_MODELS = [
   // Premium models (high-performance)
   'openrouter/deepseek/deepseek-v3.2', // High-performance reasoning model (GPT-5 class)
+  'openrouter/minimax/minimax-m2.1', // Lightweight, optimized for coding, 204K context
   'openrouter/anthropic/claude-sonnet-4.5', // Best coding performance, state-of-the-art
   'openrouter/x-ai/grok-4.1-fast', // Best agentic tool calling, 2M context
   'openrouter/z-ai/glm-4.6', // Superior coding performance, 200K context
@@ -202,6 +208,77 @@ export class LiteLLMClient {
 
     const response = await this.callAPI(request);
     return response.choices[0]?.message?.content ?? '';
+  }
+
+  /**
+   * CF-X Model: 3-layer workflow
+   * Plan → Code → Review using specific models
+   */
+  async cfX(task: string): Promise<{ plan: string; code: string; review: string }> {
+    // Step 1: Plan with DeepSeek V3.2
+    console.log('📋 CF-X: Planning with DeepSeek V3.2...');
+    const planRequest: LiteLLMRequest = {
+      model: CF_X_PLANNER,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a planning assistant. Break down the given task into a clear, step-by-step plan. Output only the plan, no explanations.',
+        },
+        {
+          role: 'user',
+          content: `Task: ${task}\n\nCreate a detailed plan:`,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 2000,
+    };
+    const planResponse = await this.callAPI(planRequest);
+    const plan = planResponse.choices[0]?.message?.content ?? '';
+
+    // Step 2: Code with MiniMax M2.1
+    console.log('💻 CF-X: Coding with MiniMax M2.1...');
+    const codeRequest: LiteLLMRequest = {
+      model: CF_X_CODER,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a coding assistant. Generate code based on the task and plan. Output clean, production-ready code with proper error handling.',
+        },
+        {
+          role: 'user',
+          content: `Task: ${task}\n\nPlan:\n${plan}\n\nGenerate the code:`,
+        },
+      ],
+      temperature: 0.3,
+      max_tokens: 4000,
+    };
+    const codeResponse = await this.callAPI(codeRequest);
+    const code = codeResponse.choices[0]?.message?.content ?? '';
+
+    // Step 3: Review with Gemini 2.5 Flash
+    console.log('🔍 CF-X: Reviewing with Gemini 2.5 Flash...');
+    const reviewRequest: LiteLLMRequest = {
+      model: CF_X_REVIEWER,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a code reviewer. Review the code against the task and plan. Identify issues, suggest improvements, and verify completeness. Check for bugs, security issues, and best practices.',
+        },
+        {
+          role: 'user',
+          content: `Task: ${task}\n\nPlan:\n${plan}\n\nCode:\n${code}\n\nReview the code for any errors, bugs, or improvements:`,
+        },
+      ],
+      temperature: 0.5,
+      max_tokens: 2000,
+    };
+    const reviewResponse = await this.callAPI(reviewRequest);
+    const review = reviewResponse.choices[0]?.message?.content ?? '';
+
+    return { plan, code, review };
   }
 }
 
