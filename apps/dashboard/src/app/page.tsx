@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [task, setTask] = useState('')
   const [result, setResult] = useState('')
   const [loading, setLoading] = useState(false)
+  const [selectedModel, setSelectedModel] = useState<'standard' | 'cf-x'>('standard')
 
   useEffect(() => {
     // Fetch real stats from LiteLLM (filtered by test API key)
@@ -48,7 +49,7 @@ export default function Dashboard() {
       const response = await fetch('/api/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ task }),
+        body: JSON.stringify({ task, model: selectedModel }),
       })
 
       const data = await response.json()
@@ -140,6 +141,54 @@ export default function Dashboard() {
           <div className="glass rounded-2xl p-6 mb-8">
             <h2 className="text-xl font-bold mb-4">Hızlı Çalıştır</h2>
             <div className="space-y-4">
+              {/* Model Selection */}
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="model"
+                    value="standard"
+                    checked={selectedModel === 'standard'}
+                    onChange={(e) => setSelectedModel(e.target.value as 'standard' | 'cf-x')}
+                    className="w-4 h-4 text-purple-600 bg-[#0a0a1a] border-white/10 focus:ring-purple-500"
+                  />
+                  <span className="text-gray-300">
+                    <span className="font-semibold">Standard</span>
+                    <span className="text-xs text-gray-500 ml-2">(GPT-4o-mini)</span>
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="model"
+                    value="cf-x"
+                    checked={selectedModel === 'cf-x'}
+                    onChange={(e) => setSelectedModel(e.target.value as 'standard' | 'cf-x')}
+                    className="w-4 h-4 text-purple-600 bg-[#0a0a1a] border-white/10 focus:ring-purple-500"
+                  />
+                  <span className="text-gray-300">
+                    <span className="font-semibold text-purple-400">CF-X</span>
+                    <span className="text-xs text-gray-500 ml-2">(DeepSeek V3.2 → MiniMax M2.1 → Gemini 2.5 Flash)</span>
+                  </span>
+                </label>
+              </div>
+
+              {selectedModel === 'cf-x' && (
+                <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 text-sm text-purple-300">
+                  <div className="flex items-start gap-2">
+                    <span className="text-lg">✨</span>
+                    <div>
+                      <p className="font-semibold mb-1">CF-X 3 Katmanlı Model</p>
+                      <ul className="text-xs space-y-1 text-purple-200/80">
+                        <li>📋 <strong>Plan:</strong> DeepSeek V3.2 (Reasoning)</li>
+                        <li>💻 <strong>Code:</strong> MiniMax M2.1 (Coding optimized)</li>
+                        <li>🔍 <strong>Review:</strong> Gemini 2.5 Flash (Code review)</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <textarea
                 value={task}
                 onChange={(e) => setTask(e.target.value)}
@@ -150,9 +199,14 @@ export default function Dashboard() {
               <button
                 onClick={handleRun}
                 disabled={loading || !task.trim()}
-                className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition disabled:opacity-50 disabled:cursor-not-allowed w-full"
               >
-                {loading ? 'Çalışıyor...' : '🚀 Çalıştır (Plan → Code → Review)'}
+                {loading 
+                  ? 'Çalışıyor...' 
+                  : selectedModel === 'cf-x'
+                    ? '🚀 CF-X ile Çalıştır (3 Katmanlı)'
+                    : '🚀 Çalıştır (Plan → Code → Review)'
+                }
               </button>
             </div>
 
