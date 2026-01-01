@@ -320,7 +320,7 @@ export class LiteLLMClient {
     let lastContent = 'Maximum tool iterations reached. Task may be incomplete.';
     for (let i = messages.length - 1; i >= 0; i--) {
       const msg = messages[i];
-      if (msg.role === 'assistant' && msg.content && msg.content.trim().length > 0) {
+      if (msg && msg.role === 'assistant' && msg.content && msg.content.trim().length > 0) {
         lastContent = msg.content;
         break;
       }
