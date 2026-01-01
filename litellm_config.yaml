@@ -97,16 +97,39 @@ model_list:
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
 
-  # CF-X Model Group (3-layer workflow)
-  # NOTE: This is a placeholder entry for LiteLLM UI. The orchestrator actually uses:
-  #   - Plan: openrouter/deepseek/deepseek-v3.2
-  #   - Code: openrouter/minimax/minimax-m2.1
-  #   - Review: openrouter/google/gemini-2.5-flash
-  # The orchestrator makes direct API calls to these models, so this config entry
-  # is only for UI display purposes. All 3 models must be available in this config.
-  - model_name: cf-x
+  # CF-X Model Groups (3-layer workflow with 3 tiers)
+  # NOTE: These are placeholder entries for LiteLLM UI. The orchestrator actually uses:
+  #   CF-X-Normal: Plan: DeepSeek V3.2, Code: Grok 4.1 Fast, Review: Gemini 2.5 Flash
+  #   CF-X-Premium: Plan: Claude Sonnet 4.5, Code: Claude Sonnet 4.5, Review: Claude Sonnet 4.5
+  #   CF-X-Cheap: Plan: GPT-4o-mini, Code: Grok 4.1 Fast, Review: GPT-4o-mini
+  # The orchestrator makes direct API calls to these models, so these config entries
+  # are only for UI display purposes. All underlying models must be available in this config.
+  
+  # CF-X-Normal: Balanced performance and cost
+  - model_name: cf-x-normal
     litellm_params:
       model: openrouter/deepseek/deepseek-v3.2  # Placeholder - orchestrator uses 3 different models
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+  
+  # CF-X-Premium: Best quality, all Claude Sonnet 4.5
+  - model_name: cf-x-premium
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-4.5  # Placeholder - orchestrator uses 3 different models
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+  
+  # CF-X-Cheap: Fast and cost-effective
+  - model_name: cf-x-cheap
+    litellm_params:
+      model: openrouter/openai/gpt-4o-mini  # Placeholder - orchestrator uses 3 different models
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+  
+  # Legacy: cf-x (defaults to normal tier for backward compatibility)
+  - model_name: cf-x
+    litellm_params:
+      model: openrouter/deepseek/deepseek-v3.2  # Placeholder - defaults to normal tier
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
 
