@@ -36,28 +36,29 @@ model_list:
 
   # Premium Coder Models (High-performance) - Fallback chain
   # DeepSeek V3.2 (High-performance reasoning model, GPT-5 class)
+  # NOTE: max_tokens removed from config - let request override it
+  # Config max_tokens was overriding request max_tokens, causing context length errors
   - model_name: openrouter/deepseek/deepseek-v3.2
     litellm_params:
       model: openrouter/deepseek/deepseek-v3.2
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
-      max_tokens: 4096  # Reasonable limit (model max: 163840, but we need space for input)
 
   # Claude Sonnet 4.5 (Best coding performance, state-of-the-art)
+  # NOTE: max_tokens removed from config - let request override it
   - model_name: openrouter/anthropic/claude-sonnet-4.5
     litellm_params:
       model: openrouter/anthropic/claude-sonnet-4.5
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
-      max_tokens: 4096  # Fix: Set reasonable limit (was causing 1M token error)
 
   # Grok 4.1 Fast (Best agentic tool calling, 2M context)
+  # NOTE: max_tokens removed from config - let request override it
   - model_name: openrouter/x-ai/grok-4.1-fast
     litellm_params:
       model: openrouter/x-ai/grok-4.1-fast
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
-      max_tokens: 4096  # Reasonable limit for tool calling responses
 
   # GLM 4.6 (Superior coding performance, 200K context)
   - model_name: openrouter/z-ai/glm-4.6
@@ -67,12 +68,12 @@ model_list:
       api_base: https://openrouter.ai/api/v1
 
   # Gemini 2.5 Flash (Advanced reasoning, coding, 1M context)
+  # NOTE: max_tokens removed from config - let request override it
   - model_name: openrouter/google/gemini-2.5-flash
     litellm_params:
       model: openrouter/google/gemini-2.5-flash
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
-      max_tokens: 4096  # Reasonable limit for review responses
 
   # Nova 2 Lite (Fast, cost-effective reasoning, 1M context)
   - model_name: openrouter/amazon/nova-2-lite-v1
@@ -89,12 +90,12 @@ model_list:
       api_base: https://openrouter.ai/api/v1
 
   # MiniMax M2.1 (Lightweight, optimized for coding, 204K context)
+  # NOTE: max_tokens removed from config - let request override it
   - model_name: openrouter/minimax/minimax-m2.1
     litellm_params:
       model: openrouter/minimax/minimax-m2.1
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
-      max_tokens: 4096  # Reasonable limit (not 1M!)
 
   # CF-X Model Group (3-layer workflow)
   # NOTE: This is a placeholder entry for LiteLLM UI. The orchestrator actually uses:
