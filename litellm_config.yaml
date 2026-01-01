@@ -153,8 +153,11 @@ general_settings:
   # LiteLLM Caching Configuration
   # Prompt caching reduces costs by reusing cached responses for identical prompts
   # Cache will use Redis if available, otherwise falls back to in_memory
-  # To enable caching, set USE_LITELLM_CACHE=true environment variable
-  # or use cache parameter in API requests
+  cache:
+    type: "redis"  # Use Redis if available, otherwise in_memory
+    ttl: 3600  # Cache TTL: 1 hour
+    prompt_cache: true  # Enable prompt caching
+    completion_cache: true  # Enable completion caching
 
 # Error handling configuration
 errors:
