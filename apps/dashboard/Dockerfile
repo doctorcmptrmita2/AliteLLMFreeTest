@@ -35,15 +35,22 @@ RUN apk add --no-cache openssl openssl-dev && \
 
 WORKDIR /app
 
-# Copy built app
+# Copy workspace files for Prisma generation
+COPY --from=base /app/package.json ./
+COPY --from=base /app/pnpm-workspace.yaml ./
+COPY --from=base /app/pnpm-lock.yaml* ./
+
+# Copy Prisma schema and migrations
+COPY --from=base /app/apps/dashboard/prisma ./apps/dashboard/prisma
+COPY --from=base /app/apps/dashboard/package.json ./apps/dashboard/
+
+# Install production dependencies (includes Prisma CLI for migrations)
+RUN pnpm install --prod --frozen-lockfile || pnpm install --prod
+
+# Copy built Next.js app (Prisma Client already included in standalone build)
 COPY --from=base /app/apps/dashboard/.next/standalone ./
 COPY --from=base /app/apps/dashboard/.next/static ./apps/dashboard/.next/static
 COPY --from=base /app/apps/dashboard/public ./apps/dashboard/public
-
-# Copy Prisma files for migrations
-COPY --from=base /app/apps/dashboard/prisma ./apps/dashboard/prisma
-COPY --from=base /app/apps/dashboard/node_modules/.prisma ./apps/dashboard/node_modules/.prisma
-COPY --from=base /app/apps/dashboard/node_modules/@prisma ./apps/dashboard/node_modules/@prisma
 
 EXPOSE 3001
 

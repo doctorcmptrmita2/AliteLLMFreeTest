@@ -20,7 +20,8 @@
     "jose": "^5.2.0",
     "bcryptjs": "^2.4.3",
     "pg": "^8.11.3",
-    "@prisma/client": "^5.19.1"
+    "@prisma/client": "^5.19.1",
+    "prisma": "^5.19.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
@@ -28,7 +29,6 @@
     "@types/react-dom": "^18.2.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/pg": "^8.10.9",
-    "prisma": "^5.19.1",
     "tsx": "^4.19.1",
     "autoprefixer": "^10.4.17",
     "postcss": "^8.4.33",
