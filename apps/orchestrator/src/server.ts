@@ -33,7 +33,7 @@ app.use(cors());
 app.use(express.json());
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'orchestrator' });
 });
 
@@ -50,7 +50,7 @@ app.post('/cf-x', async (req, res) => {
 
     const result = await client.cfX(task);
 
-    res.json({
+    return res.json({
       success: true,
       model: 'cf-x',
       result: {
@@ -66,7 +66,7 @@ app.post('/cf-x', async (req, res) => {
     });
   } catch (error) {
     console.error('CF-X Error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
@@ -111,7 +111,7 @@ app.post('/run', async (req, res) => {
     }
   } catch (error) {
     console.error('Run Error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
