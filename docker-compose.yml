@@ -96,14 +96,14 @@ services:
       dockerfile: apps/landing/Dockerfile
     environment:
       NODE_ENV: production
-      PORT: 3002
+      PORT: 3003
     networks:
       - roo-code-network
     restart: unless-stopped
     ports:
-      - "${LANDING_PORT:-3002}:3002"
+      - "${LANDING_PORT:-3003}:3003"
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3003/', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -94,10 +94,15 @@ model_list:
       max_tokens: 4096  # Reasonable limit (not 1M!)
 
   # CF-X Model Group (3-layer workflow)
-  # This is a virtual model that uses different models for plan/code/review
+  # NOTE: This is a placeholder entry for LiteLLM UI. The orchestrator actually uses:
+  #   - Plan: openrouter/deepseek/deepseek-v3.2
+  #   - Code: openrouter/minimax/minimax-m2.1
+  #   - Review: openrouter/google/gemini-2.5-flash
+  # The orchestrator makes direct API calls to these models, so this config entry
+  # is only for UI display purposes. All 3 models must be available in this config.
   - model_name: cf-x
     litellm_params:
-      model: openrouter/deepseek/deepseek-v3.2  # Will be overridden by orchestrator
+      model: openrouter/deepseek/deepseek-v3.2  # Placeholder - orchestrator uses 3 different models
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
 

@@ -34,9 +34,9 @@ COPY --from=base /app/apps/landing/.next/standalone ./
 COPY --from=base /app/apps/landing/.next/static ./apps/landing/.next/static
 COPY --from=base /app/apps/landing/public ./apps/landing/public
 
-EXPOSE 3002
+EXPOSE 3003
 
-ENV PORT=3002
+ENV PORT=3003
 ENV HOSTNAME="0.0.0.0"
 
 CMD ["node", "apps/landing/server.js"]
