@@ -41,6 +41,7 @@ model_list:
       model: openrouter/deepseek/deepseek-v3.2
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
+      max_tokens: 4096  # Reasonable limit (model max: 163840, but we need space for input)
 
   # Claude Sonnet 4.5 (Best coding performance, state-of-the-art)
   - model_name: openrouter/anthropic/claude-sonnet-4.5
@@ -71,6 +72,7 @@ model_list:
       model: openrouter/google/gemini-2.5-flash
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
+      max_tokens: 4096  # Reasonable limit for review responses
 
   # Nova 2 Lite (Fast, cost-effective reasoning, 1M context)
   - model_name: openrouter/amazon/nova-2-lite-v1
