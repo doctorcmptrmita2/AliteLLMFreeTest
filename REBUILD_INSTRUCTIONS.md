@@ -38,3 +38,4 @@ Bu package'lar `apps/dashboard/package.json` dosyasına eklendi ve Dockerfile'da
 Easypanel kullanıyorsanız, sadece Easypanel'de rebuild yapmanız yeterli. Local'de test etmenize gerek yok.
 
 
+

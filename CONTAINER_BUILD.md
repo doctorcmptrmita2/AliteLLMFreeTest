@@ -52,3 +52,4 @@ Easypanel dashboard'da:
 ## Not
 Container içinde `docker-compose` komutu yok (normal). Container içinde docker-compose kullanılamaz.
 
+

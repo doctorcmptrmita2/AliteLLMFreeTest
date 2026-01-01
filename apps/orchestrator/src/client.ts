@@ -81,13 +81,14 @@ const CODER_MODELS = [
   'openrouter/qwen/qwen3-coder:free',
 ] as const;
 
-// Tool definitions for file operations (minimal descriptions to reduce token usage)
+// Tool definitions for file operations (ultra-minimal to reduce token usage)
+// Only write_file - most critical tool for file creation
 const AVAILABLE_TOOLS = [
   {
     type: 'function' as const,
     function: {
       name: 'write_file',
-      description: 'Create/overwrite file',
+      description: 'Create file',
       parameters: {
         type: 'object',
         properties: {
@@ -95,34 +96,7 @@ const AVAILABLE_TOOLS = [
           content: { type: 'string' },
         },
         required: ['file_path', 'content'],
-      },
-    },
-  },
-  {
-    type: 'function' as const,
-    function: {
-      name: 'read_file',
-      description: 'Read file',
-      parameters: {
-        type: 'object',
-        properties: {
-          file_path: { type: 'string' },
-        },
-        required: ['file_path'],
-      },
-    },
-  },
-  {
-    type: 'function' as const,
-    function: {
-      name: 'list_files',
-      description: 'List directory',
-      parameters: {
-        type: 'object',
-        properties: {
-          directory_path: { type: 'string' },
-        },
-        required: ['directory_path'],
+        additionalProperties: false,
       },
     },
   },
@@ -218,12 +192,13 @@ export class LiteLLMClient {
     let iterations = 0;
 
     while (iterations < maxToolIterations) {
-      // Add tools to request
+      // Add tools to request (ensure max_tokens is set to prevent context length errors)
       const requestWithTools: LiteLLMRequest = {
         ...request,
         messages,
         tools: AVAILABLE_TOOLS,
         tool_choice: request.tool_choice || 'auto',
+        max_tokens: request.max_tokens || 2048, // Ensure max_tokens is set
       };
 
       const response = await this.callAPI(requestWithTools);
@@ -381,7 +356,7 @@ export class LiteLLMClient {
   async code(task: string, plan: string, useTools = false): Promise<string> {
     const systemPrompt = `You are a coding assistant. Generate code based on the task and plan. ${
       useTools 
-        ? 'Use tools (write_file, read_file, list_files) to create/edit files. Always use write_file to create files.'
+        ? 'Use write_file tool to create files. Always use write_file to create files.'
         : 'Output the code directly as text. Do not use tools.'
     }`;
 
@@ -511,7 +486,7 @@ Now implement the task using tools:`,
         },
       ],
       temperature: 0.3,
-      max_tokens: 8000, // Increased for tool calling responses
+      max_tokens: 2048, // Reduced to prevent context length errors
       tool_choice: 'auto',
     };
     

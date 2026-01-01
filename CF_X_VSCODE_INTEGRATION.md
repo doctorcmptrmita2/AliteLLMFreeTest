@@ -150,3 +150,4 @@ VSCode extension'ın CF-X'i tam 3 katmanlı kullanması için:
 
 VSCode extension'ı orchestrator HTTP API'sini kullanacak şekilde güncellenirse, CF-X tam 3 katmanlı çalışacak!
 
+

@@ -36,3 +36,4 @@ CREATE INDEX "user_api_keys_key_id_idx" ON "user_api_keys"("key_id");
 -- AddForeignKey
 ALTER TABLE "user_api_keys" ADD CONSTRAINT "user_api_keys_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+

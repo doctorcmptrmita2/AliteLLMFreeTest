@@ -48,3 +48,4 @@ CF-X bir "virtual model"dir - orchestrator tarafından yönetilir:
 3. Model listesinde `cf-x` veya `cf-x-3-layer` görünmeli
 4. Seçip kullanabilirsiniz
 
+
