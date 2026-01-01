@@ -81,24 +81,18 @@ const CODER_MODELS = [
   'openrouter/qwen/qwen3-coder:free',
 ] as const;
 
-// Tool definitions for file operations
+// Tool definitions for file operations (minimal descriptions to reduce token usage)
 const AVAILABLE_TOOLS = [
   {
     type: 'function' as const,
     function: {
       name: 'write_file',
-      description: 'Create or overwrite a file with the given content. Use this to create new files or completely replace existing files.',
+      description: 'Create/overwrite file',
       parameters: {
         type: 'object',
         properties: {
-          file_path: {
-            type: 'string',
-            description: 'The path to the file to write (relative to workspace root)',
-          },
-          content: {
-            type: 'string',
-            description: 'The complete content to write to the file',
-          },
+          file_path: { type: 'string' },
+          content: { type: 'string' },
         },
         required: ['file_path', 'content'],
       },
@@ -108,14 +102,11 @@ const AVAILABLE_TOOLS = [
     type: 'function' as const,
     function: {
       name: 'read_file',
-      description: 'Read the contents of a file. Use this to check existing code or read configuration files.',
+      description: 'Read file',
       parameters: {
         type: 'object',
         properties: {
-          file_path: {
-            type: 'string',
-            description: 'The path to the file to read (relative to workspace root)',
-          },
+          file_path: { type: 'string' },
         },
         required: ['file_path'],
       },
@@ -125,37 +116,13 @@ const AVAILABLE_TOOLS = [
     type: 'function' as const,
     function: {
       name: 'list_files',
-      description: 'List files and directories in a given path. Use this to explore the project structure.',
+      description: 'List directory',
       parameters: {
         type: 'object',
         properties: {
-          directory_path: {
-            type: 'string',
-            description: 'The directory path to list (relative to workspace root, use "." for root)',
-          },
+          directory_path: { type: 'string' },
         },
         required: ['directory_path'],
-      },
-    },
-  },
-  {
-    type: 'function' as const,
-    function: {
-      name: 'apply_diff',
-      description: 'Apply a unified diff to modify an existing file. Use this to make partial changes to files instead of rewriting them completely.',
-      parameters: {
-        type: 'object',
-        properties: {
-          file_path: {
-            type: 'string',
-            description: 'The path to the file to modify (relative to workspace root)',
-          },
-          diff: {
-            type: 'string',
-            description: 'The unified diff format changes to apply',
-          },
-        },
-        required: ['file_path', 'diff'],
       },
     },
   },
@@ -229,43 +196,6 @@ export class LiteLLMClient {
           return `Files in "${args.directory_path || '.'}":\n${[...dirs, ...files].join('\n')}`;
         }
 
-        case 'apply_diff': {
-          const filePath = path.join(WORKSPACE_ROOT, args.file_path);
-          
-          // Read existing file
-          let content = '';
-          try {
-            content = await fs.readFile(filePath, 'utf-8');
-          } catch (error) {
-            throw new Error(`File "${args.file_path}" does not exist. Use write_file to create it first.`);
-          }
-          
-          // Simple diff application (for production, use a proper diff library)
-          // This is a simplified version - in production, use a library like 'diff' or 'unidiff'
-          const diffLines = args.diff.split('\n');
-          
-          // Parse unified diff format (simplified)
-          let newContent = content;
-          for (const diffLine of diffLines) {
-            if (diffLine.startsWith('+') && !diffLine.startsWith('+++')) {
-              // Add line (simplified - proper diff parsing needed for production)
-              const addLine = diffLine.substring(1);
-              newContent += '\n' + addLine;
-            } else if (diffLine.startsWith('-') && !diffLine.startsWith('---')) {
-              // Remove line (simplified)
-              const removeLine = diffLine.substring(1);
-              newContent = newContent.replace(removeLine + '\n', '').replace(removeLine, '');
-            }
-          }
-          
-          await fs.writeFile(filePath, newContent, 'utf-8');
-          
-          if (!this.executedFiles.includes(args.file_path)) {
-            this.executedFiles.push(args.file_path);
-          }
-          
-          return `Diff applied to "${args.file_path}" successfully`;
-        }
 
         default:
           return `Unknown tool: ${toolName}`;
@@ -451,7 +381,7 @@ export class LiteLLMClient {
   async code(task: string, plan: string, useTools = false): Promise<string> {
     const systemPrompt = `You are a coding assistant. Generate code based on the task and plan. ${
       useTools 
-        ? 'You can use tools (write_file, read_file, list_files, apply_diff) to create/edit files. Use tools to implement the code directly into files. If you need to check existing files, use read_file or list_files first.'
+        ? 'Use tools (write_file, read_file, list_files) to create/edit files. Always use write_file to create files.'
         : 'Output the code directly as text. Do not use tools.'
     }`;
 
@@ -474,7 +404,13 @@ export class LiteLLMClient {
           ],
           temperature: 0.3,
           max_tokens: 4000,
-          tool_choice: useTools ? 'auto' : 'none',
+          // Only include tools if useTools is true
+          ...(useTools ? { 
+            tools: AVAILABLE_TOOLS,
+            tool_choice: 'auto' 
+          } : { 
+            tool_choice: 'none' 
+          }),
         };
 
         if (useTools) {
@@ -559,7 +495,7 @@ export class LiteLLMClient {
         {
           role: 'system',
           content:
-            'You are a coding assistant. You MUST use tools to create/edit files. NEVER output code as text - ALWAYS use write_file tool to create files. Available tools: write_file (create/overwrite files), read_file (read existing files), list_files (explore directory), apply_diff (modify files). When the task asks to create a file, you MUST use write_file tool. Example: If task says "create test.php", you MUST call write_file with file_path="test.php" and the complete code as content.',
+            'You are a coding assistant. You MUST use write_file tool to create files. NEVER output code as text. When task asks to create a file, call write_file with file_path and content.',
         },
         {
           role: 'user',
@@ -575,7 +511,7 @@ Now implement the task using tools:`,
         },
       ],
       temperature: 0.3,
-      max_tokens: 4000,
+      max_tokens: 8000, // Increased for tool calling responses
       tool_choice: 'auto',
     };
     
