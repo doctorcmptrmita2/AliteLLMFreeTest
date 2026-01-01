@@ -241,7 +241,6 @@ export class LiteLLMClient {
           
           // Simple diff application (for production, use a proper diff library)
           // This is a simplified version - in production, use a library like 'diff' or 'unidiff'
-          const lines = content.split('\n');
           const diffLines = args.diff.split('\n');
           
           // Parse unified diff format (simplified)
@@ -352,7 +351,7 @@ export class LiteLLMClient {
     // If we've exhausted iterations, return the last content
     const lastMessage = messages[messages.length - 1];
     return {
-      content: lastMessage.content || 'Maximum tool iterations reached',
+      content: lastMessage?.content || 'Maximum tool iterations reached',
       toolCalls: [],
     };
   }
