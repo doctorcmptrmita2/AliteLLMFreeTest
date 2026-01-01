@@ -74,7 +74,7 @@ services:
       LITELLM_BASE_URL: http://litellm:4000/v1
       LITELLM_API_KEY: ${LITELLM_API_KEY:-}
       REQUEST_TIMEOUT_MS: ${REQUEST_TIMEOUT_MS:-120000}
-      PORT: ${ORCHESTRATOR_PORT:-3000}
+      PORT: ${ORCHESTRATOR_PORT:-3004}
       ORCHESTRATOR_MODE: ${ORCHESTRATOR_MODE:-api}  # 'api' or 'cli'
     depends_on:
       litellm:
@@ -83,7 +83,7 @@ services:
       - roo-code-network
     restart: unless-stopped
     ports:
-      - "${ORCHESTRATOR_PORT:-3000}:3000"
+      - "${ORCHESTRATOR_PORT:-3004}:3004"
     # Orchestrator can run as HTTP API server or CLI
     # API mode: node apps/orchestrator/dist/server.js
     # CLI mode: node apps/orchestrator/dist/index.js <command>
