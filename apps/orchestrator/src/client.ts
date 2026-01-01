@@ -59,7 +59,8 @@ const REVIEWER_MODEL = 'openrouter/openai/gpt-4o-mini';
 
 // CF-X Model Configuration (3-layer workflow)
 const CF_X_PLANNER = 'openrouter/deepseek/deepseek-v3.2';
-const CF_X_CODER = 'openrouter/minimax/minimax-m2.1';
+// Using Grok 4.1 Fast for code stage - best agentic tool calling support (2M context)
+const CF_X_CODER = 'openrouter/x-ai/grok-4.1-fast';
 const CF_X_REVIEWER = 'openrouter/google/gemini-2.5-flash';
 
 const CODER_MODELS = [
@@ -548,8 +549,8 @@ export class LiteLLMClient {
     const planResponse = await this.callAPI(planRequest);
     const plan = planResponse.choices[0]?.message?.content ?? '';
 
-    // Step 2: Code with MiniMax M2.1 (with tool calling)
-    console.log('💻 CF-X: Coding with MiniMax M2.1 (tool calling enabled)...');
+    // Step 2: Code with Grok 4.1 Fast (with tool calling - best agentic tool calling support)
+    console.log('💻 CF-X: Coding with Grok 4.1 Fast (tool calling enabled)...');
     this.resetExecutedFiles(); // Reset for this execution
     
     const codeRequest: LiteLLMRequest = {
@@ -558,11 +559,19 @@ export class LiteLLMClient {
         {
           role: 'system',
           content:
-            'You are a coding assistant. Generate code based on the task and plan. Use tools (write_file, read_file, list_files, apply_diff) to create/edit files and implement the code directly. If you need to check existing files, use read_file or list_files first.',
+            'You are a coding assistant. You MUST use tools to create/edit files. NEVER output code as text - ALWAYS use write_file tool to create files. Available tools: write_file (create/overwrite files), read_file (read existing files), list_files (explore directory), apply_diff (modify files). When the task asks to create a file, you MUST use write_file tool. Example: If task says "create test.php", you MUST call write_file with file_path="test.php" and the complete code as content.',
         },
         {
           role: 'user',
-          content: `Task: ${task}\n\nPlan:\n${plan}\n\nGenerate and implement the code using tools. Create or modify files as needed:`,
+          content: `Task: ${task}\n\nPlan:\n${plan}\n\nCRITICAL INSTRUCTIONS:
+1. You MUST use the write_file tool to create files. Do NOT output code as plain text.
+2. If the task asks to create a file (e.g., "create denem.php"), you MUST call write_file tool.
+3. Example: For "create denem.php with a function", call write_file with:
+   - file_path: "denem.php"
+   - content: The complete PHP code with the function
+4. Always use tools - never output code as text only.
+
+Now implement the task using tools:`,
         },
       ],
       temperature: 0.3,

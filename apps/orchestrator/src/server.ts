@@ -65,7 +65,7 @@ app.post('/cf-x', async (req, res) => {
       },
       formatted: `🚀 CF-X 3 Katmanlı Model Sonuçları\n\n` +
         `📋 PLAN (DeepSeek V3.2):\n${'='.repeat(60)}\n${result.plan}\n\n` +
-        `💻 CODE (MiniMax M2.1):\n${'='.repeat(60)}\n${result.code}\n\n` +
+        `💻 CODE (Grok 4.1 Fast):\n${'='.repeat(60)}\n${result.code}\n\n` +
         `🔍 REVIEW (Gemini 2.5 Flash):\n${'='.repeat(60)}\n${result.review}\n\n` +
         filesInfo +
         `✅ CF-X Pipeline tamamlandı!`,

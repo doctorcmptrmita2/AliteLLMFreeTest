@@ -82,8 +82,8 @@ services:
     networks:
       - roo-code-network
     restart: unless-stopped
-    ports:
-      - "${ORCHESTRATOR_PORT:-3004}:3004"
+    expose:
+      - "3004"
     # Orchestrator can run as HTTP API server or CLI
     # API mode: node apps/orchestrator/dist/server.js
     # CLI mode: node apps/orchestrator/dist/index.js <command>
@@ -100,8 +100,8 @@ services:
     networks:
       - roo-code-network
     restart: unless-stopped
-    ports:
-      - "${LANDING_PORT:-3003}:3003"
+    expose:
+      - "3003"
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3003/', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s
@@ -130,8 +130,8 @@ services:
     networks:
       - roo-code-network
     restart: unless-stopped
-    ports:
-      - "${DASHBOARD_PORT:-3001}:3001"
+    expose:
+      - "3001"
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s

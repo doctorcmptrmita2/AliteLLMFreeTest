@@ -120,7 +120,7 @@ program
         console.log('Task:', task, '\n');
         console.log('Models:');
         console.log('  📋 Plan: DeepSeek V3.2');
-        console.log('  💻 Code: MiniMax M2.1');
+        console.log('  💻 Code: Grok 4.1 Fast (tool calling)');
         console.log('  🔍 Review: Gemini 2.5 Flash\n');
 
         const result = await client.cfX(task);
@@ -132,7 +132,7 @@ program
         console.log('\n');
 
         console.log('='.repeat(60));
-        console.log('💻 CODE (MiniMax M2.1)');
+        console.log('💻 CODE (Grok 4.1 Fast)');
         console.log('='.repeat(60));
         console.log(result.code);
         console.log('\n');
