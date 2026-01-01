@@ -57,11 +57,40 @@ interface ClientConfig {
 const PLANNER_MODEL = 'openrouter/openai/gpt-4o-mini';
 const REVIEWER_MODEL = 'openrouter/openai/gpt-4o-mini';
 
-// CF-X Model Configuration (3-layer workflow)
-const CF_X_PLANNER = 'openrouter/deepseek/deepseek-v3.2';
-// Using Grok 4.1 Fast for code stage - best agentic tool calling support (2M context)
-const CF_X_CODER = 'openrouter/x-ai/grok-4.1-fast';
-const CF_X_REVIEWER = 'openrouter/google/gemini-2.5-flash';
+// CF-X Model Configurations (3 different tiers)
+type CFXModelTier = 'normal' | 'premium' | 'cheap';
+
+interface CFXModelConfig {
+  planner: string;
+  coder: string;
+  reviewer: string;
+}
+
+const CFX_MODELS: Record<CFXModelTier, CFXModelConfig> = {
+  // CF-X-Normal: Balanced performance and cost
+  normal: {
+    planner: 'openrouter/deepseek/deepseek-v3.2',
+    coder: 'openrouter/x-ai/grok-4.1-fast',
+    reviewer: 'openrouter/google/gemini-2.5-flash',
+  },
+  // CF-X-Premium: Best quality, all Claude Sonnet 4.5
+  premium: {
+    planner: 'openrouter/anthropic/claude-sonnet-4.5',
+    coder: 'openrouter/anthropic/claude-sonnet-4.5',
+    reviewer: 'openrouter/anthropic/claude-sonnet-4.5',
+  },
+  // CF-X-Cheap: Fast and cost-effective
+  cheap: {
+    planner: 'openrouter/openai/gpt-4o-mini',
+    coder: 'openrouter/x-ai/grok-4.1-fast', // Still use Grok for tool calling
+    reviewer: 'openrouter/openai/gpt-4o-mini',
+  },
+};
+
+// Legacy constants (kept for backward compatibility, but use CFX_MODELS instead)
+// const CF_X_PLANNER = CFX_MODELS.normal.planner;
+// const CF_X_CODER = CFX_MODELS.normal.coder;
+// const CF_X_REVIEWER = CFX_MODELS.normal.reviewer;
 
 const CODER_MODELS = [
   // Premium models (high-performance)
@@ -434,24 +463,30 @@ export class LiteLLMClient {
   }
 
   /**
-   * CF-X Model: 3-layer workflow
+   * CF-X Model: 3-layer workflow with smart tool usage
    * Plan → Code → Review using specific models
-   * Code stage uses tool calling to create/edit files
+   * Plan stage analyzes if tools are needed
+   * Code stage uses tools only if required
    */
-  async cfX(task: string): Promise<{ plan: string; code: string; review: string; executedFiles: string[] }> {
-    // Step 1: Plan with DeepSeek V3.2
-    console.log('📋 CF-X: Planning with DeepSeek V3.2...');
+  async cfX(task: string, tier: CFXModelTier = 'normal'): Promise<{ plan: string; code: string; review: string; executedFiles: string[]; needsTools: boolean }> {
+    const models = CFX_MODELS[tier];
+    const tierName = tier.charAt(0).toUpperCase() + tier.slice(1);
+    
+    // Step 1: Plan - Analyze task and determine if tools are needed
+    console.log(`📋 CF-X-${tierName}: Planning with ${models.planner}...`);
+    this.resetExecutedFiles(); // Reset for this execution
+    
     const planRequest: LiteLLMRequest = {
-      model: CF_X_PLANNER,
+      model: models.planner,
       messages: [
         {
           role: 'system',
           content:
-            'You are a planning assistant. Break down the given task into a clear, step-by-step plan. Output ONLY the plan text. Do NOT use any tools, functions, or API calls. Output plain text plan only, no markdown, no explanations.',
+            'You are a planning assistant. Analyze the task and create a step-by-step plan. IMPORTANT: At the end of your plan, add a line: "TOOLS_NEEDED: YES" or "TOOLS_NEEDED: NO" based on whether the task requires file operations (create, read, modify files). Simple tasks like greetings, questions, or explanations do NOT need tools.',
         },
         {
           role: 'user',
-          content: `Task: ${task}\n\nCreate a detailed step-by-step plan. Output only the plan text:`,
+          content: `Task: ${task}\n\nAnalyze this task and create a detailed step-by-step plan. At the end, specify if tools are needed:\n- TOOLS_NEEDED: YES (if task requires creating/reading/modifying files)\n- TOOLS_NEEDED: NO (if task is simple greeting, question, or explanation)\n\nOutput only the plan text with TOOLS_NEEDED at the end:`,
         },
       ],
       temperature: 0.7,
@@ -459,22 +494,29 @@ export class LiteLLMClient {
     };
     const planResponse = await this.callAPI(planRequest);
     const plan = planResponse.choices[0]?.message?.content ?? '';
+    
+    // Extract TOOLS_NEEDED from plan
+    const toolsNeededMatch = plan.match(/TOOLS_NEEDED:\s*(YES|NO)/i);
+    const needsTools = toolsNeededMatch?.[1]?.toUpperCase() === 'YES' || false;
+    
+    console.log(`🔍 Plan analysis: Tools ${needsTools ? 'REQUIRED' : 'NOT REQUIRED'}`);
 
-    // Step 2: Code with Grok 4.1 Fast (with tool calling - best agentic tool calling support)
-    console.log('💻 CF-X: Coding with Grok 4.1 Fast (tool calling enabled)...');
-    this.resetExecutedFiles(); // Reset for this execution
+    // Step 2: Code - Use tools only if needed
+    console.log(`💻 CF-X-${tierName}: Coding with ${models.coder} (tools: ${needsTools ? 'enabled' : 'disabled'})...`);
     
     const codeRequest: LiteLLMRequest = {
-      model: CF_X_CODER,
+      model: models.coder,
       messages: [
         {
           role: 'system',
-          content:
-            'You are a coding assistant. You MUST use write_file tool to create files. NEVER output code as text. When task asks to create a file, call write_file with file_path and content.',
+          content: needsTools
+            ? 'You are a coding assistant. You MUST use write_file tool to create files. NEVER output code as text. When task asks to create a file, call write_file with file_path and content.'
+            : 'You are a coding assistant. Provide helpful responses, explanations, or code examples. Do NOT use any tools. Output your response as plain text.',
         },
         {
           role: 'user',
-          content: `Task: ${task}\n\nPlan:\n${plan}\n\nCRITICAL INSTRUCTIONS:
+          content: needsTools
+            ? `Task: ${task}\n\nPlan:\n${plan}\n\nCRITICAL INSTRUCTIONS:
 1. You MUST use the write_file tool to create files. Do NOT output code as plain text.
 2. If the task asks to create a file (e.g., "create denem.php"), you MUST call write_file tool.
 3. Example: For "create denem.php with a function", call write_file with:
@@ -482,35 +524,39 @@ export class LiteLLMClient {
    - content: The complete PHP code with the function
 4. Always use tools - never output code as text only.
 
-Now implement the task using tools:`,
+Now implement the task using tools:`
+            : `Task: ${task}\n\nPlan:\n${plan}\n\nProvide a helpful response or explanation. Do NOT use any tools. Output your response as plain text:`,
         },
       ],
       temperature: 0.3,
-      max_tokens: 2048, // Reduced to prevent context length errors
-      tool_choice: 'auto',
+      max_tokens: 2048,
+      tool_choice: needsTools ? 'auto' : 'none',
     };
     
-    const codeResult = await this.callAPIWithTools(codeRequest);
-    const code = codeResult.content || `Code implemented using tools. Files created/modified: ${this.getExecutedFiles().join(', ')}`;
+    const codeResult = needsTools 
+      ? await this.callAPIWithTools(codeRequest)
+      : { content: (await this.callAPI(codeRequest)).choices[0]?.message?.content ?? '', toolCalls: [] };
+    
+    const code = codeResult.content || (needsTools ? `Code implemented using tools. Files created/modified: ${this.getExecutedFiles().join(', ')}` : '');
     const executedFiles = this.getExecutedFiles();
     
     if (executedFiles.length > 0) {
       console.log(`📁 Files created/modified: ${executedFiles.join(', ')}`);
     }
 
-    // Step 3: Review with Gemini 2.5 Flash
-    console.log('🔍 CF-X: Reviewing with Gemini 2.5 Flash...');
+    // Step 3: Review
+    console.log(`🔍 CF-X-${tierName}: Reviewing with ${models.reviewer}...`);
     const reviewRequest: LiteLLMRequest = {
-      model: CF_X_REVIEWER,
+      model: models.reviewer,
       messages: [
         {
           role: 'system',
           content:
-            'You are a code reviewer. Review the code against the task and plan. Identify issues, suggest improvements, and verify completeness. Check for bugs, security issues, and best practices. Output ONLY your review text. Do NOT use any tools, functions, or API calls. Output plain text review only.',
+            'You are a code reviewer. Review the code/response against the task and plan. Identify issues, suggest improvements, and verify completeness. Check for bugs, security issues, and best practices. Output ONLY your review text. Do NOT use any tools, functions, or API calls. Output plain text review only.',
         },
         {
           role: 'user',
-          content: `Task: ${task}\n\nPlan:\n${plan}\n\nCode:\n${code}\n\nReview the code. Output only your review text:`,
+          content: `Task: ${task}\n\nPlan:\n${plan}\n\nCode/Response:\n${code}\n\nReview the code/response. Output only your review text:`,
         },
       ],
       temperature: 0.5,
@@ -524,6 +570,7 @@ Now implement the task using tools:`,
       code, 
       review,
       executedFiles: this.getExecutedFiles(),
+      needsTools,
     };
   }
 }

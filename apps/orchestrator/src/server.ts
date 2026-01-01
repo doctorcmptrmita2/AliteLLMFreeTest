@@ -40,35 +40,46 @@ app.get('/health', (_req, res) => {
 // CF-X endpoint
 app.post('/cf-x', async (req, res) => {
   try {
-    const { task } = req.body;
+    const { task, tier = 'normal' } = req.body;
 
     if (!task) {
       return res.status(400).json({ error: 'Task is required' });
     }
 
-    console.log('🚀 CF-X Request received:', task);
+    // Validate tier
+    const validTiers = ['normal', 'premium', 'cheap'];
+    const modelTier = validTiers.includes(tier) ? tier : 'normal';
 
-    const result = await client.cfX(task);
+    console.log(`🚀 CF-X-${modelTier.toUpperCase()} Request received:`, task);
+
+    const result = await client.cfX(task, modelTier as 'normal' | 'premium' | 'cheap');
 
     const filesInfo = result.executedFiles.length > 0 
       ? `\n📁 Oluşturulan/Düzenlenen Dosyalar:\n${result.executedFiles.map(f => `  - ${f}`).join('\n')}\n`
       : '\n';
 
+    const toolsInfo = result.needsTools 
+      ? `\n🔧 Araçlar: Kullanıldı (${result.executedFiles.length} dosya işlendi)\n`
+      : `\n💬 Araçlar: Gerekli değildi (basit görev)\n`;
+
     return res.json({
       success: true,
-      model: 'cf-x',
+      model: `cf-x-${modelTier}`,
+      tier: modelTier,
       result: {
         plan: result.plan,
         code: result.code,
         review: result.review,
         executedFiles: result.executedFiles,
+        needsTools: result.needsTools,
       },
-      formatted: `🚀 CF-X 3 Katmanlı Model Sonuçları\n\n` +
-        `📋 PLAN (DeepSeek V3.2):\n${'='.repeat(60)}\n${result.plan}\n\n` +
-        `💻 CODE (Grok 4.1 Fast):\n${'='.repeat(60)}\n${result.code}\n\n` +
-        `🔍 REVIEW (Gemini 2.5 Flash):\n${'='.repeat(60)}\n${result.review}\n\n` +
+      formatted: `🚀 CF-X-${modelTier.toUpperCase()} 3 Katmanlı Model Sonuçları\n\n` +
+        `📋 PLAN:\n${'='.repeat(60)}\n${result.plan}\n\n` +
+        `💻 CODE:\n${'='.repeat(60)}\n${result.code}\n\n` +
+        `🔍 REVIEW:\n${'='.repeat(60)}\n${result.review}\n\n` +
+        toolsInfo +
         filesInfo +
-        `✅ CF-X Pipeline tamamlandı!`,
+        `✅ CF-X-${modelTier.toUpperCase()} Pipeline tamamlandı!`,
     });
   } catch (error) {
     console.error('CF-X Error:', error);
@@ -88,16 +99,22 @@ app.post('/run', async (req, res) => {
     }
 
     if (cfX) {
-      // CF-X workflow (with tool calling)
-      const result = await client.cfX(task);
+      // CF-X workflow (with smart tool usage)
+      const tier = req.body.tier || 'normal';
+      const validTiers = ['normal', 'premium', 'cheap'];
+      const modelTier = validTiers.includes(tier) ? tier : 'normal';
+      
+      const result = await client.cfX(task, modelTier as 'normal' | 'premium' | 'cheap');
       return res.json({
         success: true,
-        model: 'cf-x',
+        model: `cf-x-${modelTier}`,
+        tier: modelTier,
         result: {
           plan: result.plan,
           code: result.code,
           review: result.review,
           executedFiles: result.executedFiles,
+          needsTools: result.needsTools,
         },
       });
     } else {

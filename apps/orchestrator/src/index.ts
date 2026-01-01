@@ -111,38 +111,70 @@ program
   .command('run')
   .description('Run full pipeline: plan → code → review')
   .argument('<task>', 'The task to execute')
-  .option('--cf-x', 'Use CF-X model (DeepSeek V3.2 → MiniMax M2.1 → Gemini 2.5 Flash)')
-  .action(async (task: string, options: { cfX?: boolean }) => {
+  .option('--cf-x', 'Use CF-X model')
+  .option('--tier <tier>', 'CF-X tier: normal, premium, or cheap (default: normal)')
+  .action(async (task: string, options: { cfX?: boolean; tier?: string }) => {
     try {
       if (options.cfX) {
         // CF-X Model: 3-layer workflow
-        console.log('🚀 Running CF-X Model Pipeline...\n');
+        const tier = (options.tier || 'normal') as 'normal' | 'premium' | 'cheap';
+        const validTiers = ['normal', 'premium', 'cheap'];
+        const modelTier = validTiers.includes(tier) ? tier : 'normal';
+        
+        console.log(`🚀 Running CF-X-${modelTier.toUpperCase()} Model Pipeline...\n`);
         console.log('Task:', task, '\n');
         console.log('Models:');
-        console.log('  📋 Plan: DeepSeek V3.2');
-        console.log('  💻 Code: Grok 4.1 Fast (tool calling)');
-        console.log('  🔍 Review: Gemini 2.5 Flash\n');
+        
+        const modelNames = {
+          normal: {
+            planner: 'DeepSeek V3.2',
+            coder: 'Grok 4.1 Fast',
+            reviewer: 'Gemini 2.5 Flash',
+          },
+          premium: {
+            planner: 'Claude Sonnet 4.5',
+            coder: 'Claude Sonnet 4.5',
+            reviewer: 'Claude Sonnet 4.5',
+          },
+          cheap: {
+            planner: 'GPT-4o-mini',
+            coder: 'Grok 4.1 Fast',
+            reviewer: 'GPT-4o-mini',
+          },
+        };
+        
+        const names = modelNames[modelTier];
+        console.log(`  📋 Plan: ${names.planner}`);
+        console.log(`  💻 Code: ${names.coder} (smart tool usage)`);
+        console.log(`  🔍 Review: ${names.reviewer}\n`);
 
-        const result = await client.cfX(task);
+        const result = await client.cfX(task, modelTier);
 
         console.log('='.repeat(60));
-        console.log('📋 PLAN (DeepSeek V3.2)');
+        console.log(`📋 PLAN (${names.planner})`);
         console.log('='.repeat(60));
         console.log(result.plan);
         console.log('\n');
 
         console.log('='.repeat(60));
-        console.log('💻 CODE (Grok 4.1 Fast)');
+        console.log(`💻 CODE (${names.coder})`);
         console.log('='.repeat(60));
         console.log(result.code);
         console.log('\n');
 
         console.log('='.repeat(60));
-        console.log('🔍 REVIEW (Gemini 2.5 Flash)');
+        console.log(`🔍 REVIEW (${names.reviewer})`);
         console.log('='.repeat(60));
         console.log(result.review);
         console.log('\n');
 
+        if (result.executedFiles.length > 0) {
+          console.log('📁 Files created/modified:');
+          result.executedFiles.forEach(f => console.log(`  - ${f}`));
+          console.log('\n');
+        }
+
+        console.log(`🔧 Tools: ${result.needsTools ? 'Used' : 'Not needed (simple task)'}\n`);
         console.log('✅ CF-X Pipeline completed successfully!');
       } else {
         // Standard pipeline
